@@ -20,9 +20,10 @@ describe("Moroccan phone validation", () => {
     ["0712345678", "+212712345678"],
     ["+212612345678", "+212612345678"],
     ["+212712345678", "+212712345678"],
-    ["00212612345678", "+212612345678"],
-    [" 06 12-34.56 78 ", "+212612345678"],
-    ["+212\u00a07 (12) 34-56.78", "+212712345678"],
+    [" 06 12 34 56 78 ", "+212612345678"],
+    ["06-12-34-56-78", "+212612345678"],
+    ["+2127.12.34.56.78", "+212712345678"],
+    ["+212\u00a07\u00a012\u00a034\u00a056\u00a078", "+212712345678"],
   ])("normalizes %s to %s", (input, canonical) => {
     expect(normalizeMoroccanPhone(input)).toBe(canonical);
     expect(validMoroccanPhone(input)).toBe(true);
@@ -36,6 +37,15 @@ describe("Moroccan phone validation", () => {
     "06ABC45678",
     "++212612345678",
     "+2120612345678",
+    "00212612345678",
+    "0(6)12345678",
+    "+212(6)12345678",
+    "06...12...34...56...78",
+    "06-12.34-56.78",
+    "-0612345678",
+    "0612345678-",
+    "06+12345678",
+    "+ 212612345678",
   ])("rejects invalid phone %s", (phone) => {
     expect(validMoroccanPhone(phone)).toBe(false);
   });
@@ -47,7 +57,7 @@ describe("checkoutSchema", () => {
       ...validCheckout,
       firstName: "  Amina   Zahra ",
       lastName: "  El-Mansouri  ",
-      phone: " 06 12-34.56.78 ",
+      phone: " 06 12 34 56 78 ",
       address: "  12   rue Atlas,   Rabat  ",
     });
 
@@ -72,7 +82,11 @@ describe("checkoutSchema", () => {
     expect(checkoutSchema.safeParse({ ...validCheckout, firstName: "A" }).success).toBe(false);
     expect(checkoutSchema.safeParse({ ...validCheckout, firstName: "A".repeat(80) }).success).toBe(true);
     expect(checkoutSchema.safeParse({ ...validCheckout, firstName: "A".repeat(81) }).success).toBe(false);
+    expect(checkoutSchema.safeParse({ ...validCheckout, lastName: "A" }).success).toBe(false);
+    expect(checkoutSchema.safeParse({ ...validCheckout, lastName: "A".repeat(80) }).success).toBe(true);
+    expect(checkoutSchema.safeParse({ ...validCheckout, lastName: "A".repeat(81) }).success).toBe(false);
     expect(checkoutSchema.safeParse({ ...validCheckout, address: "A".repeat(9) }).success).toBe(false);
+    expect(checkoutSchema.safeParse({ ...validCheckout, address: "A".repeat(10) }).success).toBe(true);
     expect(checkoutSchema.safeParse({ ...validCheckout, address: "A".repeat(300) }).success).toBe(true);
     expect(checkoutSchema.safeParse({ ...validCheckout, address: "A".repeat(301) }).success).toBe(false);
   });
@@ -85,12 +99,23 @@ describe("checkoutSchema", () => {
     });
 
     expect(empty.success).toBe(false);
+    expect(checkoutSchema.safeParse({
+      ...validCheckout,
+      items: Array.from({ length: 30 }, (_, index) => ({ variantId: `v-${index}`, quantity: 1 })),
+    }).success).toBe(true);
     expect(oversized.success).toBe(false);
     if (!empty.success) expect(empty.error.issues[0]?.message).toMatch(/article|panier/i);
     if (!oversized.success) expect(oversized.error.issues[0]?.message).toMatch(/30|article|panier/i);
   });
 
-  it.each([0, 1.5, 21])("rejects invalid quantity %s", (quantity) => {
+  it("accepts the maximum quantity", () => {
+    expect(checkoutSchema.safeParse({
+      ...validCheckout,
+      items: [{ variantId: "variant-1", quantity: 20 }],
+    }).success).toBe(true);
+  });
+
+  it.each([0, 1.5, 21, Number.MAX_SAFE_INTEGER + 1])("rejects invalid quantity %s", (quantity) => {
     const result = checkoutSchema.safeParse({
       ...validCheckout,
       items: [{ variantId: "variant-1", quantity }],
@@ -101,6 +126,7 @@ describe("checkoutSchema", () => {
 
   it("rejects blank and overly long variant identifiers", () => {
     expect(checkoutSchema.safeParse({ ...validCheckout, items: [{ variantId: "", quantity: 1 }] }).success).toBe(false);
+    expect(checkoutSchema.safeParse({ ...validCheckout, items: [{ variantId: "v".repeat(128), quantity: 1 }] }).success).toBe(true);
     expect(checkoutSchema.safeParse({ ...validCheckout, items: [{ variantId: "v".repeat(129), quantity: 1 }] }).success).toBe(false);
   });
 
@@ -124,5 +150,19 @@ describe("checkoutSchema", () => {
     expect(badPhone.success).toBe(false);
     if (!badPhone.success) expect(badPhone.error.issues[0]?.message).toMatch(/téléphone/i);
     expect(unexpected.success).toBe(false);
+    if (!unexpected.success) expect(unexpected.error.issues[0]).toMatchObject({
+      message: "Champ non reconnu.",
+      path: [],
+    });
+
+    const unexpectedItem = checkoutSchema.safeParse({
+      ...validCheckout,
+      items: [{ variantId: "variant-1", quantity: 1, price: 100 }],
+    });
+    expect(unexpectedItem.success).toBe(false);
+    if (!unexpectedItem.success) expect(unexpectedItem.error.issues[0]).toMatchObject({
+      message: "Champ non reconnu.",
+      path: ["items", 0],
+    });
   });
 });

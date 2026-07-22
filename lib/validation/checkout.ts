@@ -1,20 +1,30 @@
 import { z } from "zod";
 
 const MOROCCAN_MOBILE = /^\+212[67]\d{8}$/;
-const PHONE_CHARACTERS = /^[\d+ .\-()\u00a0]+$/;
+
+function compactStructuredPhone(phone: string): string | null {
+  const trimmed = phone.trim().replace(/\u00a0/g, " ");
+  if (!/^[+\d .-]+$/.test(trimmed)) return null;
+  if (/^\+[ .-]/.test(trimmed)) return null;
+
+  const separators = [...trimmed].filter((character) => /[ .-]/.test(character));
+  if (new Set(separators).size > 1) return null;
+  if (separators.length > 0 && trimmed.split(separators[0]).some((part) => part.length === 0)) {
+    return null;
+  }
+
+  const compact = separators.length > 0 ? trimmed.split(separators[0]).join("") : trimmed;
+  if (/^0[67]\d{8}$/.test(compact)) return `+212${compact.slice(1)}`;
+  if (MOROCCAN_MOBILE.test(compact)) return compact;
+  return null;
+}
 
 export function normalizeMoroccanPhone(phone: string): string {
-  const trimmed = phone.trim();
-  if (!PHONE_CHARACTERS.test(trimmed)) return trimmed;
-
-  const compact = trimmed.replace(/[ .\-()\u00a0]/g, "");
-  if (/^0[67]\d{8}$/.test(compact)) return `+212${compact.slice(1)}`;
-  if (/^00212[67]\d{8}$/.test(compact)) return `+${compact.slice(2)}`;
-  return compact;
+  return compactStructuredPhone(phone) ?? phone.trim();
 }
 
 export function validMoroccanPhone(phone: string): boolean {
-  return MOROCCAN_MOBILE.test(normalizeMoroccanPhone(phone));
+  return compactStructuredPhone(phone) !== null;
 }
 
 const normalizedText = (minimum: number, maximum: number, field: string) =>
@@ -28,6 +38,8 @@ const normalizedText = (minimum: number, maximum: number, field: string) =>
         .max(maximum, `${field} ne peut pas dépasser ${maximum} caractères.`),
     );
 
+const frenchStrictError = { error: "Champ non reconnu." } as const;
+
 const checkoutItemSchema = z.strictObject({
   variantId: z
     .string({ error: "La référence de l’article est requise." })
@@ -40,7 +52,7 @@ const checkoutItemSchema = z.strictObject({
     .safe("La quantité est invalide.")
     .min(1, "La quantité doit être au moins 1.")
     .max(20, "La quantité ne peut pas dépasser 20."),
-});
+}, frenchStrictError);
 
 export const checkoutSchema = z
   .strictObject({
@@ -55,7 +67,7 @@ export const checkoutSchema = z
       .array(checkoutItemSchema, { error: "Le panier doit contenir des articles." })
       .min(1, "Le panier doit contenir au moins un article.")
       .max(30, "Le panier ne peut pas contenir plus de 30 articles."),
-  })
+  }, frenchStrictError)
   .superRefine(({ items }, context) => {
     const seen = new Set<string>();
     items.forEach((item, index) => {
