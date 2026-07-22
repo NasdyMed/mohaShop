@@ -8,12 +8,46 @@ function retainValidStock(items: readonly CartItem[]) {
   return items.filter((item) => positiveInteger(item.availableStock) > 0);
 }
 
+function nonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+export function sanitizeCartItems(value: unknown): CartItem[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.flatMap((candidate): CartItem[] => {
+    if (!candidate || typeof candidate !== "object") return [];
+    const item = candidate as Record<string, unknown>;
+    if (!nonEmptyString(item.variantId)
+      || !nonEmptyString(item.productSlug)
+      || !nonEmptyString(item.productName)
+      || !nonEmptyString(item.size)
+      || !nonEmptyString(item.color)
+      || (item.imageUrl !== null && typeof item.imageUrl !== "string")
+      || !Number.isInteger(item.unitPriceDh) || (item.unitPriceDh as number) <= 0
+      || !Number.isInteger(item.availableStock) || (item.availableStock as number) <= 0
+      || !Number.isInteger(item.quantity) || (item.quantity as number) <= 0) return [];
+
+    return [{
+      variantId: item.variantId,
+      productSlug: item.productSlug,
+      productName: item.productName,
+      imageUrl: item.imageUrl as string | null,
+      size: item.size,
+      color: item.color,
+      unitPriceDh: item.unitPriceDh as number,
+      availableStock: item.availableStock as number,
+      quantity: Math.min(item.quantity as number, item.availableStock as number),
+    }];
+  });
+}
+
 export function cartReducer(state: readonly CartItem[], action: CartAction): CartItem[] {
   const validState = retainValidStock(state);
 
   switch (action.type) {
     case "hydrate":
-      return retainValidStock(action.items).map((item) => ({ ...item }));
+      return sanitizeCartItems(action.items);
     case "add": { 
       const stock = positiveInteger(action.item.availableStock);
       const requested = positiveInteger(action.quantity);

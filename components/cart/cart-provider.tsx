@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useReducer } from "react";
 
-import { cartReducer, selectItemCount, selectTotal } from "./cart-reducer";
+import { cartReducer, sanitizeCartItems, selectItemCount, selectTotal } from "./cart-reducer";
 import type { CartAction, CartItem } from "./cart-types";
 
 const STORAGE_KEY = "boots-cart-v1";
@@ -17,29 +17,11 @@ type CartContextValue = {
 
 const CartContext = createContext<CartContextValue | null>(null);
 
-function nonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0;
-}
-
 function parseStoredCart(value: string | null): CartItem[] {
   if (!value) return [];
   try {
     const parsed: unknown = JSON.parse(value);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((candidate): candidate is CartItem => {
-      if (!candidate || typeof candidate !== "object") return false;
-      const item = candidate as Record<string, unknown>;
-      return nonEmptyString(item.variantId)
-        && nonEmptyString(item.productSlug)
-        && nonEmptyString(item.productName)
-        && (item.imageUrl === null || typeof item.imageUrl === "string")
-        && nonEmptyString(item.size)
-        && nonEmptyString(item.color)
-        && Number.isInteger(item.unitPriceDh) && (item.unitPriceDh as number) >= 0
-        && Number.isInteger(item.availableStock) && (item.availableStock as number) > 0
-        && Number.isInteger(item.quantity) && (item.quantity as number) > 0
-        && (item.quantity as number) <= (item.availableStock as number);
-    }).map((item) => ({ ...item }));
+    return sanitizeCartItems(parsed);
   } catch {
     return [];
   }

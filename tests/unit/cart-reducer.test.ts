@@ -71,6 +71,41 @@ describe("cartReducer", () => {
   it("clears all lines", () => {
     expect(cartReducer([{ ...atlas, quantity: 1 }], { type: "clear" })).toEqual([]);
   });
+
+  it("sanitizes hydrated lines and clamps quantity to stock", () => {
+    const valid = { ...atlas, quantity: 2 };
+    const overStock = { ...atlas, variantId: "v2", quantity: 99 };
+    const incoming = [
+      valid,
+      overStock,
+      { ...atlas, variantId: "v3", unitPriceDh: 0, quantity: 1 },
+      { ...atlas, variantId: "v4", availableStock: -1, quantity: 1 },
+      { ...atlas, variantId: "v5", quantity: Number.NaN },
+      { ...atlas, variantId: "v6", quantity: 0 },
+      { ...atlas, variantId: "", quantity: 1 },
+    ];
+
+    const next = cartReducer([], { type: "hydrate", items: incoming });
+
+    expect(next).toEqual([valid, { ...overStock, quantity: 3 }]);
+    expect(next[0]).not.toBe(valid);
+    expect(next[1]).not.toBe(overStock);
+    expect(incoming[1].quantity).toBe(99);
+  });
+
+  it("rejects non-integer prices, stocks, and quantities during hydration", () => {
+    const items = [
+      { ...atlas, unitPriceDh: 10.5, quantity: 1 },
+      { ...atlas, availableStock: 2.5, quantity: 1 },
+      { ...atlas, quantity: 1.5 },
+      { ...atlas, productSlug: "", quantity: 1 },
+      { ...atlas, productName: "", quantity: 1 },
+      { ...atlas, color: "", quantity: 1 },
+      { ...atlas, size: "", quantity: 1 },
+    ];
+
+    expect(cartReducer([], { type: "hydrate", items })).toEqual([]);
+  });
 });
 
 describe("cart selectors", () => {
