@@ -25,7 +25,7 @@ Un composant client `QuickVariantSelector` est intégré à chaque carte.
 
 1. La carte affiche d’abord un bouton « Choisir une taille ».
 2. Le bouton ouvre un panneau dans la carte.
-3. Les couleurs disponibles sont présentées sous forme de pastilles accessibles. Le nom de la couleur active reste toujours affiché en texte.
+3. Toutes les couleurs connues sont présentées sous forme de pastilles accessibles. Le nom de la couleur active reste toujours affiché en texte.
 4. Le choix d’une couleur met à jour la liste des pointures de cette couleur.
 5. Toutes les pointures connues pour la couleur sont visibles. Une pointure sans stock est barrée, désactivée et non sélectionnable.
 6. Après sélection d’une pointure disponible, le bouton « Ajouter au panier » ajoute une unité de la variante exacte au panier existant.
@@ -64,7 +64,9 @@ La présentation des contrôles peut être ajustée pour rester lisible, mais au
 ## Erreurs et cas limites
 
 - Un produit sans variante disponible affiche « Rupture de stock » et ne propose pas l’ajout rapide.
-- Une couleur sans pointure disponible reste visible uniquement si elle existe dans les variantes ; toutes ses pointures sont désactivées.
+- Une couleur qui possède au moins une pointure disponible reste sélectionnable ; seules ses pointures sans stock sont barrées et désactivées.
+- Une couleur dont toutes les pointures sont épuisées reste visible, mais sa pastille est barrée, atténuée, désactivée et non sélectionnable.
+- Si toutes les couleurs sont épuisées, la carte affiche « Rupture de stock » et ne propose aucun bouton d’ajout rapide.
 - Une image absente conserve le fallback existant.
 - Si le panier n’est pas encore hydraté, l’ajout attend l’état prêt existant plutôt que de perdre la sélection.
 - Une variante devenue indisponible après affichage sera rejetée lors de la commande par la validation serveur existante.
@@ -76,6 +78,7 @@ La présentation des contrôles peut être ajustée pour rester lisible, mais au
 - La colonne « Filtrer par » est à gauche sur ordinateur et au-dessus sur mobile.
 - Le prix et les badges de disponibilité possèdent les styles dédiés.
 - Le choix de couleur filtre les pointures de la carte.
+- Une couleur totalement épuisée est visible, barrée, désactivée et impossible à sélectionner.
 - Les pointures à stock zéro sont visibles, barrées, désactivées et impossibles à ajouter.
 - La variante couleur/pointure sélectionnée est ajoutée au panier avec une quantité de 1.
 - Les interactions n’introduisent aucun bouton imbriqué dans un lien.
