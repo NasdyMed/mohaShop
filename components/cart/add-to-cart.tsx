@@ -24,6 +24,6 @@ export function AddToCart({ product, variant }: { product: ProductSnapshot; vari
     <label htmlFor="product-quantity">Quantité</label>
     <input id="product-quantity" type="number" inputMode="numeric" min={1} max={variant?.stock ?? 1} value={safeQuantity} disabled={!available} onChange={(event) => setQuantity(Math.min(Math.max(Math.floor(event.currentTarget.valueAsNumber || 1), 1), variant?.stock ?? 1))} />
     <button type="button" disabled={!available} onClick={add}>{available ? "Ajouter au panier" : "Sélectionnez une variante"}</button>
-    <p className="cart-confirmation" aria-live="polite">{confirmation && confirmation.variantId === variant?.id ? <>{confirmation.message} <Link href="/panier">Voir le panier</Link></> : null}</p>
+    <p className="cart-confirmation" aria-live="polite">{confirmation && confirmation.variantId === variant?.id ? <>{confirmation.message} <Link className="touch-link" href="/panier">Voir le panier</Link></> : null}</p>
   </div>;
 }

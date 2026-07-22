@@ -5,5 +5,5 @@ import { useCart } from "./cart-provider";
 
 export function CartLink() {
   const { hydrated, itemCount } = useCart();
-  return <Link href="/panier">Panier{hydrated && itemCount > 0 ? ` (${itemCount})` : ""}</Link>;
+  return <Link className="touch-link" href="/panier">Panier{hydrated && itemCount > 0 ? ` (${itemCount})` : ""}</Link>;
 }
