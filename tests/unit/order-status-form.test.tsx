@@ -20,6 +20,9 @@ describe("OrderStatusForm", () => {
     fireEvent.submit(form);
     fireEvent.submit(form);
     expect(mocks.update).toHaveBeenCalledTimes(1);
+    expect(form).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("status")).toHaveTextContent("Mise à jour…");
+    expect(screen.getByRole("button", { name: "Mise à jour…" })).toBeDisabled();
     resolve({ ok: true });
     await waitFor(() => expect(screen.getByText("Statut mis à jour.")).toBeInTheDocument());
   });

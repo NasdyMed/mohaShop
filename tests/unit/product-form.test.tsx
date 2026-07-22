@@ -42,6 +42,9 @@ describe("ProductForm", () => {
     fireEvent.submit(form);
     fireEvent.submit(form);
     expect(mocks.save).toHaveBeenCalledTimes(1);
+    expect(form).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("status")).toHaveTextContent("Enregistrement…");
+    expect(screen.getByRole("button", { name: "Enregistrement…" })).toBeDisabled();
     resolve({ ok: false, code: "DUPLICATE_SLUG", message: "Ce slug est déjà utilisé.", fieldErrors: {} });
     expect(await screen.findByRole("alert")).toHaveTextContent("Ce slug est déjà utilisé.");
     expect(screen.getByRole("textbox", { name: "Nom" })).toHaveValue("Botte Atlas");
@@ -67,6 +70,8 @@ describe("ProductForm", () => {
     fireEvent.change(input, { target: { files: [file] } });
     fireEvent.change(input, { target: { files: [file] } });
     expect(mocks.upload).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("status")).toHaveTextContent("Téléversement…");
+    expect(input.closest("form")).toHaveAttribute("aria-busy", "true");
     resolve({ ok: false, message: "Le téléversement a échoué." });
     expect(await screen.findByRole("alert")).toHaveTextContent("Le téléversement a échoué.");
     expect(input).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");

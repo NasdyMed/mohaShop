@@ -43,6 +43,9 @@ describe("LoginForm", () => {
     });
 
     expect(mockedSignIn).toHaveBeenCalledTimes(1);
+    expect(form).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("status")).toHaveTextContent("Connexion en cours…");
+    expect(screen.getByRole("button", { name: "Connexion en cours…" })).toBeDisabled();
 
     await act(async () => resolveSignIn({ ok: false, error: "CredentialsSignin", status: 401, url: null }));
   });

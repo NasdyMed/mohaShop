@@ -6,6 +6,7 @@ import { useRef, useState } from "react";
 
 import { createOrderAction } from "@/app/actions/create-order";
 import { formatPriceDh } from "@/components/shop/product-card";
+import { LoadingLabel } from "@/components/ui/loading-label";
 import { checkoutSchema } from "@/lib/validation/checkout";
 import { useCart } from "./cart-provider";
 
@@ -97,7 +98,7 @@ export function CheckoutForm() {
     <section className="checkout-panel" aria-labelledby="checkout-title">
       <p className="eyebrow">Finaliser votre achat</p><h1 id="checkout-title">Vos coordonnées</h1>
       <p className="checkout-intro">Nous les utiliserons uniquement pour préparer et livrer cette commande.</p>
-      <form onSubmit={submit} noValidate>
+      <form onSubmit={submit} noValidate aria-busy={pending}>
         {formError && <div className="form-error-summary" role="alert" aria-live="assertive">{formError}</div>}
         <div className="checkout-fields">
           <CheckoutField label="Prénom" name="firstName" autoComplete="given-name" value={fields.firstName} error={fieldErrors.firstName} onChange={field} />
@@ -105,7 +106,7 @@ export function CheckoutForm() {
           <CheckoutField label="Téléphone" name="phone" autoComplete="tel" inputMode="tel" value={fields.phone} error={fieldErrors.phone} onChange={field} />
           <CheckoutField label="Adresse de livraison" name="address" autoComplete="street-address" value={fields.address} error={fieldErrors.address} onChange={field} multiline />
         </div>
-        <button className="checkout-submit" type="submit" disabled={pending}>{pending ? "Commande en cours…" : "Confirmer ma commande"}</button>
+        <button className="checkout-submit" type="submit" disabled={pending}>{pending ? <LoadingLabel>Commande en cours…</LoadingLabel> : "Confirmer ma commande"}</button>
         <p className="submit-note">Aucun paiement en ligne — vous réglerez à la livraison.</p>
       </form>
     </section>

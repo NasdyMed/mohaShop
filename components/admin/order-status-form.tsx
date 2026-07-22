@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateOrderStatusAction } from "@/app/actions/update-order-status";
 import { orderStatusLabels } from "@/lib/orders/status";
+import { LoadingLabel } from "@/components/ui/loading-label";
 
 export function OrderStatusForm({ orderId, targets }: { orderId: string; targets: OrderStatus[] }) {
   const router = useRouter();
@@ -30,10 +31,10 @@ export function OrderStatusForm({ orderId, targets }: { orderId: string; targets
         locked.current = false;
       }
     });
-  }} className="admin-status-form">
+  }} className="admin-status-form" aria-busy={pending}>
     <label htmlFor="target">Nouveau statut</label>
     <select id="target" name="target" disabled={pending}>{targets.map((status) => <option key={status} value={status}>{orderStatusLabels[status]}</option>)}</select>
-    <button disabled={pending} type="submit">{pending ? "Mise à jour…" : "Mettre à jour"}</button>
+    <button disabled={pending} type="submit">{pending ? <LoadingLabel>Mise à jour…</LoadingLabel> : "Mettre à jour"}</button>
     <p aria-live="polite">{message}</p>
   </form>;
 }

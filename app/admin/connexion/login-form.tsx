@@ -4,6 +4,8 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useRef, useState } from "react";
 
+import { LoadingLabel } from "@/components/ui/loading-label";
+
 type LoginFormProps = {
   destination: "/admin" | "/admin/commandes";
 };
@@ -46,7 +48,7 @@ export function LoginForm({ destination }: LoginFormProps) {
   }
 
   return (
-    <form className="admin-login-form" onSubmit={submit}>
+    <form className="admin-login-form" onSubmit={submit} aria-busy={pending}>
       {error ? <p className="form-error-summary" role="alert">{error}</p> : null}
       <div className="form-field">
         <label htmlFor="email">Adresse e-mail</label>
@@ -57,7 +59,7 @@ export function LoginForm({ destination }: LoginFormProps) {
         <input id="password" name="password" type="password" autoComplete="current-password" required />
       </div>
       <button className="admin-submit" type="submit" disabled={pending}>
-        {pending ? "Connexion…" : "Se connecter"}
+        {pending ? <LoadingLabel>Connexion en cours…</LoadingLabel> : "Se connecter"}
       </button>
     </form>
   );

@@ -122,6 +122,8 @@ describe("CheckoutForm", () => {
     await user.click(button);
 
     expect(screen.getByRole("button", { name: "Commande en cours…" })).toBeDisabled();
+    expect(button.closest("form")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("status")).toHaveTextContent("Commande en cours…");
     fireEvent.click(screen.getByRole("button", { name: "Commande en cours…" }));
     expect(createOrderAction).toHaveBeenCalledTimes(1);
     resolve({ ok: false, code: "UNKNOWN" });

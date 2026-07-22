@@ -3,6 +3,7 @@ import { FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveProductAction } from "@/app/actions/save-product";
 import { uploadProductImageAction } from "@/app/actions/upload-product-image";
+import { LoadingLabel } from "@/components/ui/loading-label";
 import { EditableVariant, VariantEditor } from "./variant-editor";
 
 type EditableImage = { id?: string; url: string; alt: string; position: number };
@@ -59,7 +60,7 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
     <label><input disabled={locked || (!value.isVisible && !canPublish)} type="checkbox" checked={value.isVisible} onChange={(event) => setValue({ ...value, isVisible: event.target.checked })}/> Produit visible</label><FieldError errors={errors.isVisible}/>
     {!canPublish && <p>Ajoutez une image et une déclinaison pour publier. Le brouillon reste enregistrable.</p>}
     <section><h2>Images</h2><FieldError errors={errors.images}/>
-      <label className="secondary-link">{uploading ? "Téléversement…" : "Téléverser une image"}<input className="sr-only" disabled={locked || value.images.length >= 10} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => void upload(event.target.files?.[0])}/></label>
+      <label className="secondary-link">{uploading ? <LoadingLabel>Téléversement…</LoadingLabel> : "Téléverser une image"}<input className="sr-only" disabled={locked || value.images.length >= 10} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => void upload(event.target.files?.[0])}/></label>
       {value.images.map((image, index) => <div className="admin-image-row" key={image.id ?? image.url}>
         <a href={image.url} target="_blank" rel="noreferrer">Aperçu {index + 1}</a><FieldError errors={errors[`images.${index}.url`]}/><FieldError errors={errors[`images.${index}.position`]}/><FieldError errors={errors[`images.${index}.id`]}/>
         <label>Texte alternatif<input disabled={locked} required minLength={2} maxLength={160} aria-invalid={!!errors[`images.${index}.alt`]} aria-describedby={errors[`images.${index}.alt`] ? `product-image-${index}-alt-error` : undefined} value={image.alt} onChange={(event) => setValue({ ...value, images: value.images.map((item, current) => current === index ? { ...item, alt: event.target.value } : item) })}/></label><FieldError id={`product-image-${index}-alt-error`} errors={errors[`images.${index}.alt`]}/>
@@ -68,6 +69,6 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
       </div>)}
     </section>
     <VariantEditor value={value.variants} onChange={(variants) => setValue({ ...value, variants })} disabled={locked} errors={errors}/>
-    <button className="admin-submit" disabled={locked}>{busy ? "Enregistrement…" : "Enregistrer"}</button>
+    <button className="admin-submit" disabled={locked}>{busy ? <LoadingLabel>Enregistrement…</LoadingLabel> : "Enregistrer"}</button>
   </form>;
 }
