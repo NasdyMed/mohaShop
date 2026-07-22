@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { VariantPicker, type CatalogVariant } from "@/components/shop/variant-picker";
@@ -28,7 +29,8 @@ describe("VariantPicker", () => {
 
     fireEvent.click(screen.getByRole("radio", { name: "Cognac" }));
 
-    expect(screen.getByRole("radio", { name: "41" })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "41 — Rupture de stock" })).toBeDisabled();
+    expect(screen.getByText("Choisissez maintenant une pointure.")).toBeInTheDocument();
     expect(screen.getByText("Rupture de stock")).toBeInTheDocument();
   });
 
@@ -49,6 +51,32 @@ describe("VariantPicker", () => {
 
     fireEvent.click(screen.getByRole("radio", { name: "Cognac" }));
     expect(onSelect).toHaveBeenLastCalledWith(null);
-    expect(screen.getByRole("radio", { name: "41" })).not.toBeChecked();
+    expect(screen.getByRole("radio", { name: /41/ })).not.toBeChecked();
+  });
+
+  it("resets a selected variant when the available variants change", () => {
+    const onSelect = vi.fn<(variant: CatalogVariant | null) => void>();
+    const { rerender } = render(<VariantPicker variants={variants} onSelect={onSelect} />);
+    fireEvent.click(screen.getByRole("radio", { name: "Noir" }));
+    fireEvent.click(screen.getByRole("radio", { name: "41" }));
+
+    rerender(<VariantPicker variants={[variants[0]]} onSelect={onSelect} />);
+
+    expect(onSelect).toHaveBeenLastCalledWith(null);
+    expect(screen.getByText("Choisissez une couleur et une pointure disponibles.")).toBeInTheDocument();
+  });
+
+  it("supports keyboard selection through native radio controls", async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn<(variant: CatalogVariant | null) => void>();
+    render(<VariantPicker variants={variants} onSelect={onSelect} />);
+
+    await user.tab();
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("radio", { name: "Noir" })).toBeChecked();
+    await user.tab();
+    await user.keyboard(" ");
+
+    expect(onSelect).toHaveBeenLastCalledWith(variants[2]);
   });
 });

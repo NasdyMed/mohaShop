@@ -8,12 +8,12 @@ export function ProductGallery({ images, productName }: { images: CatalogImage[]
   }
 
   return (
-    <div className="product-gallery" aria-label={`Galerie de ${productName}`}>
+    <section className="product-gallery" aria-label="Galerie du produit">
       {images.map((image, index) => (
         <figure className={index === 0 ? "gallery-main" : "gallery-secondary"} key={image.id}>
           <Image src={image.url} alt={image.alt} fill priority={index === 0} sizes="(max-width: 900px) 100vw, 55vw" />
         </figure>
       ))}
-    </div>
+    </section>
   );
 }

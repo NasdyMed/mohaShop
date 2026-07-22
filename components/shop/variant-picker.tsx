@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export type CatalogVariant = {
   id: string;
@@ -16,13 +16,26 @@ type VariantPickerProps = {
 };
 
 export function VariantPicker({ variants, onSelect }: VariantPickerProps) {
-  const [color, setColor] = useState<string | null>(null);
-  const [size, setSize] = useState<string | null>(null);
+  const [chosenColor, setColor] = useState<string | null>(null);
+  const [chosenSize, setSize] = useState<string | null>(null);
   const colors = [...new Set(variants.map((variant) => variant.color))];
   const sizes = [...new Set(variants.map((variant) => variant.size))];
+  const color = chosenColor && colors.includes(chosenColor) ? chosenColor : null;
+  const size = chosenSize && variants.some(
+    (variant) => variant.color === color && variant.size === chosenSize && variant.stock > 0,
+  ) ? chosenSize : null;
   const selected = variants.find(
     (variant) => variant.color === color && variant.size === size && variant.stock > 0,
   );
+  const selectedCombination = variants.find(
+    (variant) => variant.color === color && variant.size === size,
+  );
+
+  useEffect(() => {
+    if (chosenColor !== color || chosenSize !== size) {
+      onSelect?.(null);
+    }
+  }, [chosenColor, chosenSize, color, onSelect, size]);
 
   function chooseColor(nextColor: string) {
     setColor(nextColor);
@@ -73,6 +86,7 @@ export function VariantPicker({ variants, onSelect }: VariantPickerProps) {
               ? variants.find((variant) => variant.color === color && variant.size === option)
               : undefined;
             const available = Boolean(matching && matching.stock > 0);
+            const soldOut = Boolean(matching && matching.stock === 0);
             return (
               <label className="variant-option" key={option}>
                 <input
@@ -81,9 +95,13 @@ export function VariantPicker({ variants, onSelect }: VariantPickerProps) {
                   value={option}
                   checked={size === option}
                   disabled={!available}
+                  aria-label={soldOut ? `${option} — Rupture de stock` : option}
                   onChange={() => chooseSize(option)}
                 />
-                <span>{option}</span>
+                <span>
+                  {option}
+                  {soldOut ? <small>Rupture de stock</small> : null}
+                </span>
               </label>
             );
           })}
@@ -95,8 +113,10 @@ export function VariantPicker({ variants, onSelect }: VariantPickerProps) {
           ? selected.stock <= 3
             ? `Plus que ${selected.stock} en stock`
             : `${selected.stock} disponibles`
-          : color && variants.some((variant) => variant.color === color && variant.stock === 0)
+          : selectedCombination?.stock === 0
             ? "Rupture de stock"
+            : color
+              ? "Choisissez maintenant une pointure."
             : "Choisissez une couleur et une pointure disponibles."}
       </p>
       <button className="purchase-placeholder" type="button" disabled>

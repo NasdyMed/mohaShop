@@ -28,14 +28,14 @@ export async function listVisibleProducts(): Promise<CatalogProductCard[]> {
       name: true,
       priceDh: true,
       images: { orderBy: { position: "asc" }, take: 1, select: { id: true, url: true, alt: true } },
-      variants: { select: { stock: true } },
+      variants: { where: { stock: { gt: 0 } }, take: 1, select: { id: true } },
     },
   });
 
   return products.map(({ images, variants, ...product }) => ({
     ...product,
     image: images[0] ?? null,
-    available: variants.some((variant) => variant.stock > 0),
+    available: variants.length > 0,
   }));
 }
 
