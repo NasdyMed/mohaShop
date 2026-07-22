@@ -6,15 +6,19 @@ import { generateOrderNumber } from "@/lib/orders/order-number";
 import { checkoutSchema } from "@/lib/validation/checkout";
 
 export type OrderCreationErrorCode = "INVALID" | "OUT_OF_STOCK" | "UNKNOWN";
+export type OrderCreationInternalCode = "UNEXPECTED" | "RETRY_EXHAUSTED";
 
 export class OrderCreationError extends Error {
   constructor(
     public readonly code: OrderCreationErrorCode,
-    options?: { cause?: unknown },
+    options?: { cause?: unknown; internalCode?: OrderCreationInternalCode },
   ) {
     super(code === "OUT_OF_STOCK" ? "Stock insuffisant." : "La commande n’a pas pu être créée.", options);
     this.name = "OrderCreationError";
+    this.internalCode = options?.internalCode ?? "UNEXPECTED";
   }
+
+  public readonly internalCode: OrderCreationInternalCode;
 }
 
 export type CreateOrderResult = {
@@ -23,7 +27,9 @@ export type CreateOrderResult = {
 };
 
 const MAX_ORDER_TOTAL_DH = 100_000_000;
-const MAX_ATTEMPTS = 3;
+const MAX_ATTEMPTS = 5;
+const RETRY_BASE_DELAY_MS = 20;
+const RETRY_MAX_DELAY_MS = 250;
 
 function isKnownPrismaError(error: unknown, code: string): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === code;
@@ -33,6 +39,40 @@ function hasNumberConstraint(error: unknown): boolean {
   if (!isKnownPrismaError(error, "P2002")) return false;
   const target = (error as Prisma.PrismaClientKnownRequestError).meta?.target;
   return Array.isArray(target) ? target.includes("number") : String(target).includes("number");
+}
+
+export function computeRetryDelay(attempt: number, random: () => number = Math.random): number {
+  const exponential = RETRY_BASE_DELAY_MS * 2 ** Math.max(0, attempt - 1);
+  return Math.min(RETRY_MAX_DELAY_MS, Math.round(exponential * (1 + random())));
+}
+
+type RetryOptions = {
+  sleep?: (milliseconds: number) => Promise<void>;
+  random?: () => number;
+};
+
+export async function runWithOrderRetry<T>(
+  operation: () => Promise<T>,
+  options: RetryOptions = {},
+): Promise<T> {
+  const sleep = options.sleep ?? ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+  const random = options.random ?? Math.random;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (error instanceof OrderCreationError) throw error;
+      const retryable = isKnownPrismaError(error, "P2034") || hasNumberConstraint(error);
+      if (!retryable) throw new OrderCreationError("UNKNOWN");
+      if (attempt === MAX_ATTEMPTS) {
+        throw new OrderCreationError("UNKNOWN", { internalCode: "RETRY_EXHAUSTED" });
+      }
+      await sleep(computeRetryDelay(attempt, random));
+    }
+  }
+
+  throw new OrderCreationError("UNKNOWN", { internalCode: "RETRY_EXHAUSTED" });
 }
 
 function safeLineTotal(priceDh: number, quantity: number): number {
@@ -53,9 +93,8 @@ export async function createOrder(rawInput: unknown): Promise<CreateOrderResult>
     throw new OrderCreationError("UNKNOWN");
   }
 
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
-    try {
-      return await db.$transaction(async (transaction) => {
+  return runWithOrderRetry(() =>
+    db.$transaction(async (transaction) => {
         const lines: Array<{
           variantId: string;
           productName: string;
@@ -109,14 +148,6 @@ export async function createOrder(rawInput: unknown): Promise<CreateOrderResult>
           },
         });
         return { number, productSlugs: [...productSlugs] };
-      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-    } catch (error) {
-      if (error instanceof OrderCreationError) throw error;
-      const retryable = isKnownPrismaError(error, "P2034") || hasNumberConstraint(error);
-      if (retryable && attempt < MAX_ATTEMPTS) continue;
-      throw new OrderCreationError("UNKNOWN");
-    }
-  }
-
-  throw new OrderCreationError("UNKNOWN");
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }),
+  );
 }

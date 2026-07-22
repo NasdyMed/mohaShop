@@ -10,11 +10,9 @@ type CreateOrderActionResult =
   | { ok: false; code: "INVALID" | "OUT_OF_STOCK" | "UNKNOWN"; fieldErrors?: Record<string, string[]> };
 
 export async function createOrderAction(rawInput: unknown): Promise<CreateOrderActionResult> {
+  let result;
   try {
-    const result = await createOrder(rawInput);
-    revalidatePath("/");
-    for (const slug of result.productSlugs) revalidatePath(`/produits/${encodeURIComponent(slug)}`);
-    return { ok: true, number: result.number };
+    result = await createOrder(rawInput);
   } catch (error) {
     if (error instanceof OrderCreationError) {
       if (error.code === "INVALID") {
@@ -27,9 +25,20 @@ export async function createOrderAction(rawInput: unknown): Promise<CreateOrderA
       }
       if (error.code === "OUT_OF_STOCK") return { ok: false, code: "OUT_OF_STOCK" };
     }
-    console.error("Unexpected error while creating an order", {
+    console.error("order_creation_unknown", {
       errorName: error instanceof Error ? error.name : "UnknownError",
+      internalCode: error instanceof OrderCreationError ? error.internalCode : "UNEXPECTED",
     });
     return { ok: false, code: "UNKNOWN" };
   }
+
+  try {
+    revalidatePath("/");
+    for (const slug of result.productSlugs) revalidatePath(`/produits/${encodeURIComponent(slug)}`);
+  } catch (error) {
+    console.error("cache_revalidation_failed", {
+      errorName: error instanceof Error ? error.name : "UnknownError",
+    });
+  }
+  return { ok: true, number: result.number };
 }

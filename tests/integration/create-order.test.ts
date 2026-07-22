@@ -1,7 +1,8 @@
 // @vitest-environment node
+import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-const RUN_ID = "task6_atomic_order";
+const RUN_ID = `task6_${process.pid}_${randomUUID().replaceAll("-", "")}`;
 const PRODUCT_PREFIX = `${RUN_ID}_product_`;
 const PHONE = "+212612345678";
 
