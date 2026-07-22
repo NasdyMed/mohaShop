@@ -45,7 +45,7 @@ beforeEach(() => {
   createOrderAction.mockReset();
   push.mockReset();
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe("CheckoutForm", () => {
   it("attend l’hydratation puis affiche un état vide avec retour au catalogue", async () => {
@@ -155,6 +155,26 @@ describe("CheckoutForm", () => {
     await user.click(screen.getByRole("button", { name: "Confirmer ma commande" }));
 
     await waitFor(() => expect(push).toHaveBeenCalledWith("/commande/BOT-ABC123DE45"));
+    const clearWrites = setItem.mock.calls.slice(writesBeforeSubmit).filter(([, value]) => value === "[]");
+    expect(clearWrites).toHaveLength(1);
+  });
+
+  it("préserve le succès et propose un lien direct lorsque la navigation échoue", async () => {
+    createOrderAction.mockResolvedValue({ ok: true, number: "BOT-ABC123DE45" });
+    push.mockImplementation(() => { throw new Error("navigation indisponible"); });
+    const setItem = vi.spyOn(Storage.prototype, "setItem");
+    renderCheckout();
+    await waitFor(() => expect(screen.getByLabelText("Prénom")).toBeInTheDocument());
+    const writesBeforeSubmit = setItem.mock.calls.length;
+    const user = await fillValidForm();
+    await user.click(screen.getByRole("button", { name: "Confirmer ma commande" }));
+
+    expect(await screen.findByText("BOT-ABC123DE45")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Voir la confirmation de commande" })).toHaveAttribute("href", "/commande/BOT-ABC123DE45");
+    expect(screen.getByText(/navigation automatique n’a pas abouti/i)).toBeInTheDocument();
+    expect(screen.queryByText("Une erreur inattendue est survenue. Veuillez réessayer.")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Confirmer ma commande" })).not.toBeInTheDocument();
+    expect(createOrderAction).toHaveBeenCalledTimes(1);
     const clearWrites = setItem.mock.calls.slice(writesBeforeSubmit).filter(([, value]) => value === "[]");
     expect(clearWrites).toHaveLength(1);
   });

@@ -27,9 +27,15 @@ export function CheckoutForm() {
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldName, string>>>({});
   const [formError, setFormError] = useState("");
   const [pending, setPending] = useState(false);
+  const [completedOrderNumber, setCompletedOrderNumber] = useState<string | null>(null);
+  const [navigationFailed, setNavigationFailed] = useState(false);
   const submitLocked = useRef(false);
 
   if (!hydrated) return <div className="cart-status" role="status">Chargement de votre commande…</div>;
+  if (completedOrderNumber) {
+    const confirmationHref = `/commande/${completedOrderNumber}`;
+    return <section className="cart-empty checkout-handoff" aria-live="polite"><p className="eyebrow">Commande enregistrée</p><h1>Votre commande est confirmée.</h1><p>Numéro de commande <strong>{completedOrderNumber}</strong></p>{navigationFailed && <p>La navigation automatique n’a pas abouti. Votre commande est bien enregistrée&nbsp;: utilisez le lien ci-dessous pour afficher sa confirmation.</p>}<Link className="primary-link" href={confirmationHref}>Voir la confirmation de commande</Link></section>;
+  }
   if (items.length === 0) return <section className="cart-empty"><p className="eyebrow">Votre commande</p><h1>Votre panier est vide.</h1><p>Ajoutez une paire à votre panier avant de passer commande.</p><div className="empty-actions"><Link className="primary-link" href="/">Voir la collection</Link><Link className="secondary-link" href="/panier">Retour au panier</Link></div></section>;
 
   const actionItems = items.map(({ variantId, quantity }) => ({ variantId, quantity }));
@@ -65,9 +71,14 @@ export function CheckoutForm() {
         setFormError(failureMessages[result.code]);
         return;
       }
-      dispatch({ type: "clear" });
+      setCompletedOrderNumber(result.number);
       succeeded = true;
-      router.push(`/commande/${result.number}`);
+      dispatch({ type: "clear" });
+      try {
+        router.push(`/commande/${result.number}`);
+      } catch {
+        setNavigationFailed(true);
+      }
     } catch {
       setFormError(failureMessages.UNKNOWN);
     } finally {
