@@ -55,7 +55,7 @@ model ProductVariant {
 
 model Order {
   id                String      @id @default(cuid())
-  number            String      @unique @default(uuid())
+  number            String      @unique
   customerFirstName String
   customerLastName  String
   customerPhone     String

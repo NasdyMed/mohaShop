@@ -73,9 +73,6 @@ async function main() {
         },
       });
 
-      await tx.productImage.deleteMany({
-        where: { productId: product.id, id: { not: demo.imageId } },
-      });
       await tx.productImage.upsert({
         where: { id: demo.imageId },
         update: { productId: product.id, url: demo.image, alt: demo.name, position: 0 },
@@ -85,7 +82,7 @@ async function main() {
       for (const variant of demo.variants) {
         await tx.productVariant.upsert({
           where: { sku: variant.sku },
-          update: { productId: product.id, size: variant.size, color: variant.color, stock: variant.stock },
+          update: { productId: product.id, size: variant.size, color: variant.color },
           create: { productId: product.id, ...variant },
         });
       }
