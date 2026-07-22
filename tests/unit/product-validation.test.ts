@@ -4,7 +4,7 @@ import { productInputSchema } from "@/lib/validation/product";
 const valid = {
   name: "  Bottes Atlas  ", description: "Une botte solide pour toutes les aventures.", priceDh: 899,
   slug: "bottes-atlas", isVisible: true,
-  images: [{ url: "https://example.com/boot.webp", alt: "Botte Atlas", position: 0 }],
+  images: [{ url: "https://images.unsplash.com/boot.webp", alt: "Botte Atlas", position: 0 }],
   variants: [{ sku: " atlas-38-noir ", size: "38", color: "Noir", stock: 4 }],
 };
 
@@ -25,7 +25,7 @@ describe("productInputSchema", () => {
     expect(productInputSchema.safeParse({ ...valid, name: "Mauvais\u0000nom" }).success).toBe(false);
     expect(productInputSchema.safeParse({ ...valid, secret: true }).success).toBe(false);
     expect(productInputSchema.safeParse({ ...valid, images: [{ ...valid.images[0], url: "http://example.com/x" }] }).success).toBe(false);
-    expect(productInputSchema.safeParse({ ...valid, images: [valid.images[0], { ...valid.images[0], url: "https://example.com/y" }] }).success).toBe(false);
+    expect(productInputSchema.safeParse({ ...valid, images: [valid.images[0], { ...valid.images[0], url: "https://images.unsplash.com/y" }] }).success).toBe(false);
     expect(productInputSchema.safeParse({ ...valid, variants: [valid.variants[0], { ...valid.variants[0], size: "39" }] }).success).toBe(false);
     expect(productInputSchema.safeParse({ ...valid, variants: [valid.variants[0], { ...valid.variants[0], sku: "OTHER", stock: 1 }] }).success).toBe(false);
   });
@@ -40,7 +40,7 @@ describe("productInputSchema", () => {
     const imageId = "cm12345678901234567890123";
     const variantId = "cm22345678901234567890123";
     const result = productInputSchema.safeParse({ ...valid,
-      images: [{ ...valid.images[0], id: imageId }, { ...valid.images[0], id: imageId, url: "https://example.com/other.webp", position: 1 }],
+      images: [{ ...valid.images[0], id: imageId }, { ...valid.images[0], id: imageId, url: "https://images.unsplash.com/other.webp", position: 1 }],
       variants: [{ ...valid.variants[0], id: variantId }, { ...valid.variants[0], id: variantId, sku: "OTHER", size: "39" }],
     });
     expect(result.success).toBe(false);

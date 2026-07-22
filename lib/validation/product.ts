@@ -7,7 +7,12 @@ const clean = (min: number, max: number, label: string) => z.string()
 
 const imageSchema = z.object({
   id: z.string().cuid().optional(),
-  url: z.string().trim().max(2048).url("URL d’image invalide.").refine((value) => value.startsWith("https://"), "L’image doit utiliser HTTPS."),
+  url: z.string().trim().max(2048).url("URL d’image invalide.").refine((value) => {
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" && !url.username && !url.password && !url.port && (url.hostname === "images.unsplash.com" || /^[^.]+\.public\.blob\.vercel-storage\.com$/.test(url.hostname));
+    } catch { return false; }
+  }, "L’image doit utiliser un hébergeur autorisé en HTTPS."),
   alt: clean(2, 160, "Le texte alternatif"),
   position: z.number().int().min(0).max(9),
 }).strict();

@@ -12,7 +12,7 @@ describe("saveProductAction", () => {
   it("retourne les erreurs de champ en français", async () => { mocks.requireAdmin.mockResolvedValue({}); const result = await saveProductAction({ ...input, slug: "Mauvais slug" }); expect(result.ok).toBe(false); if (!result.ok) expect(result.fieldErrors.slug?.[0]).toContain("Slug"); });
   it("sérialise les erreurs imbriquées avec leur chemin complet", async () => {
     mocks.requireAdmin.mockResolvedValue({});
-    const result = await saveProductAction({ ...input, priceDh: 1.5, description: "court", isVisible: true, images: [{ url: "https://example.com/a.webp", alt: "", position: 0 }], variants: [{ sku: "OK", size: "38", color: "Noir", stock: -1 }] });
+    const result = await saveProductAction({ ...input, priceDh: 1.5, description: "court", isVisible: true, images: [{ url: "https://images.unsplash.com/a.webp", alt: "", position: 0 }], variants: [{ sku: "OK", size: "38", color: "Noir", stock: -1 }] });
     expect(result).toMatchObject({ ok: false, fieldErrors: { priceDh: expect.any(Array), description: expect.any(Array), "images.0.alt": expect.any(Array), "variants.0.stock": expect.any(Array) } });
   });
   it("mappe les conflits sans fuite", async () => { mocks.requireAdmin.mockResolvedValue({}); mocks.saveProduct.mockRejectedValue(new ProductMutationError("DUPLICATE_SKU")); await expect(saveProductAction(input)).resolves.toMatchObject({ ok: false, code: "DUPLICATE_SKU" }); });

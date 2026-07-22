@@ -20,12 +20,14 @@ export async function saveProduct(raw: ProductInput) {
   try {
     return await db.$transaction(async (tx) => {
       let id = input.id;
+      let previousSlug: string | undefined;
       if (!id) {
         const product = await tx.product.create({ data: { name: input.name, description: input.description, priceDh: input.priceDh, slug: input.slug, isVisible: input.isVisible }, select: { id: true } });
         id = product.id;
       } else {
-        const exists = await tx.product.findUnique({ where: { id }, select: { id: true } });
+        const exists = await tx.product.findUnique({ where: { id }, select: { id: true, slug: true } });
         if (!exists) throw new ProductMutationError("NOT_FOUND");
+        if (exists.slug !== input.slug) previousSlug = exists.slug;
         await tx.product.update({ where: { id }, data: { name: input.name, description: input.description, priceDh: input.priceDh, slug: input.slug, isVisible: input.isVisible } });
       }
 
@@ -46,10 +48,10 @@ export async function saveProduct(raw: ProductInput) {
         else await tx.productVariant.create({ data: { ...data, productId: id } });
       }
 
-      // Blob deletion is intentionally outside this mutation; lifecycle cleanup is future work.
+      // Remote blob deletion is intentionally deferred: removing a DB image must not destructively delete its remote asset.
       await tx.productImage.deleteMany({ where: { productId: id } });
       if (input.images.length) await tx.productImage.createMany({ data: input.images.map(({ url, alt, position }) => ({ productId: id!, url, alt, position })) });
-      return { id, slug: input.slug };
+      return { id, slug: input.slug, ...(previousSlug ? { previousSlug } : {}) };
     });
   } catch (error) {
     if (error instanceof ProductMutationError) throw error;

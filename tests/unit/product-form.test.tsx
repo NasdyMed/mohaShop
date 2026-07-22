@@ -86,6 +86,12 @@ describe("ProductForm", () => {
   });
 });
 
+describe("ProductForm failures and accessibility",()=>{
+ it("déverrouille et permet une nouvelle sauvegarde après une exception",async()=>{mocks.save.mockRejectedValueOnce(new Error("network")).mockResolvedValueOnce({ok:false,code:"UNKNOWN",message:"Réessayez.",fieldErrors:{}});render(<ProductForm initialValue={validDraft}/>);const button=screen.getByRole("button",{name:"Enregistrer"});fireEvent.submit(button.closest("form")!);expect(await screen.findByRole("alert")).toHaveTextContent(/incertain/i);expect(button).not.toBeDisabled();fireEvent.submit(button.closest("form")!);await waitFor(()=>expect(mocks.save).toHaveBeenCalledTimes(2))});
+ it("déverrouille et permet un nouvel upload après une exception",async()=>{mocks.upload.mockRejectedValueOnce(new Error("network")).mockResolvedValueOnce({ok:false,message:"Réessayez."});render(<ProductForm/>);const input=screen.getByLabelText(/téléverser une image/i);const file=new File(["x"],"x.webp",{type:"image/webp"});fireEvent.change(input,{target:{files:[file]}});expect(await screen.findByRole("alert")).toHaveTextContent(/réessayez/i);expect(input).not.toBeDisabled();fireEvent.change(input,{target:{files:[file]}});await waitFor(()=>expect(mocks.upload).toHaveBeenCalledTimes(2))});
+ it("associe les erreurs aux champs produit, image et déclinaison",async()=>{mocks.save.mockResolvedValue({ok:false,code:"INVALID",message:"Erreur.",fieldErrors:{name:["Nom invalide"],priceDh:["Prix invalide"],"images.0.alt":["Alt invalide"],"variants.0.stock":["Stock invalide"]}});render(<ProductForm initialValue={validDraft}/>);fireEvent.submit(screen.getByRole("button",{name:"Enregistrer"}).closest("form")!);await screen.findByText("Nom invalide");expect(screen.getByRole("textbox",{name:"Nom"})).toHaveAttribute("aria-describedby","product-name-error");expect(screen.getByRole("spinbutton",{name:"Prix (DH)"})).toHaveAttribute("aria-invalid","true");expect(screen.getByRole("textbox",{name:"Texte alternatif"})).toHaveAttribute("aria-describedby","product-image-0-alt-error");expect(screen.getByRole("spinbutton",{name:"Stock"})).toHaveAttribute("aria-describedby","variant-0-stock-error")});
+});
+
 describe("VariantEditor through ProductForm", () => {
   it("ajoute, modifie et retire une déclinaison", async () => {
     const user = userEvent.setup();
