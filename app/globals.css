@@ -55,6 +55,7 @@ input:focus-visible + span, a:focus-visible, button:focus-visible { outline: 3px
 .loading-label { display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
 .loading-spinner { width: 18px; height: 18px; flex: 0 0 auto; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: loading-spin .75s linear infinite; }
 @keyframes loading-spin { to { transform: rotate(360deg); } }
+.route-loading { min-height: 45vh; display: grid; place-items: center; padding: 48px 24px; color: var(--muted); }
 .admin-shell { width: min(1180px, calc(100% - 40px)); margin-inline: auto; }
 .admin-header { min-height: 82px; display: flex; align-items: center; justify-content: space-between; gap: 24px; border-bottom: 1px solid var(--line); }
 .admin-header nav { display: flex; align-items: center; gap: 22px; color: var(--muted); font-size: .85rem; }
