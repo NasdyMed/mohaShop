@@ -34,13 +34,23 @@ export const productInputSchema = z.object({
   if (value.isVisible && value.images.length === 0) context.addIssue({ code: "custom", path: ["images"], message: "Ajoutez au moins une image avant de publier." });
   if (value.isVisible && value.variants.length === 0) context.addIssue({ code: "custom", path: ["variants"], message: "Ajoutez au moins une déclinaison avant de publier." });
   const positions = new Set<number>();
+  const imageIds = new Set<string>();
   value.images.forEach((image, index) => {
+    if (image.id) {
+      if (imageIds.has(image.id)) context.addIssue({ code: "custom", path: ["images", index, "id"], message: "Cette image est dupliquée." });
+      imageIds.add(image.id);
+    }
     if (positions.has(image.position)) context.addIssue({ code: "custom", path: ["images", index, "position"], message: "Les positions des images doivent être uniques." });
     positions.add(image.position);
   });
   const skus = new Set<string>();
   const combinations = new Set<string>();
+  const variantIds = new Set<string>();
   value.variants.forEach((variant, index) => {
+    if (variant.id) {
+      if (variantIds.has(variant.id)) context.addIssue({ code: "custom", path: ["variants", index, "id"], message: "Cette déclinaison est dupliquée." });
+      variantIds.add(variant.id);
+    }
     if (skus.has(variant.sku)) context.addIssue({ code: "custom", path: ["variants", index, "sku"], message: "Chaque SKU doit être unique." });
     skus.add(variant.sku);
     const combination = `${variant.size.toLocaleLowerCase("fr")}\u0000${variant.color.toLocaleLowerCase("fr")}`;

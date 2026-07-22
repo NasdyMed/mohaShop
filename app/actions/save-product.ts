@@ -4,13 +4,27 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import { ProductMutationError, saveProduct } from "@/lib/catalog/admin-mutations";
 import { productInputSchema } from "@/lib/validation/product";
 
-type FailureCode = "INVALID" | "NOT_FOUND" | "TAMPERED_VARIANT" | "DUPLICATE_SLUG" | "DUPLICATE_SKU" | "UNKNOWN";
-type Result = { ok: true; id: string; slug: string } | { ok: false; code: FailureCode; message: string; fieldErrors: Record<string, string[] | undefined> };
-const messages: Record<FailureCode, string> = { INVALID: "Vérifiez les champs du produit.", NOT_FOUND: "Produit introuvable.", TAMPERED_VARIANT: "Une déclinaison est invalide.", DUPLICATE_SLUG: "Ce slug est déjà utilisé.", DUPLICATE_SKU: "Ce SKU est déjà utilisé.", UNKNOWN: "L’enregistrement a échoué." };
+type FailureCode = "INVALID" | "NOT_FOUND" | "TAMPERED_VARIANT" | "DUPLICATE_SLUG" | "DUPLICATE_SKU" | "DUPLICATE_VARIANT" | "UNKNOWN";
+type Result = { ok: true; id: string; slug: string } | { ok: false; code: FailureCode; message: string; fieldErrors: Record<string, string[]> };
+const messages: Record<FailureCode, string> = {
+  INVALID: "Vérifiez les champs du produit.", NOT_FOUND: "Produit introuvable.", TAMPERED_VARIANT: "Une déclinaison est invalide.",
+  DUPLICATE_SLUG: "Ce slug est déjà utilisé.", DUPLICATE_SKU: "Ce SKU est déjà utilisé.",
+  DUPLICATE_VARIANT: "Cette pointure et cette couleur existent déjà.", UNKNOWN: "L’enregistrement a échoué.",
+};
+
+function serializeIssues(issues: { path: PropertyKey[]; message: string }[]) {
+  const result: Record<string, string[]> = {};
+  for (const issue of issues) {
+    const key = issue.path.map(String).join(".") || "form";
+    (result[key] ??= []).push(issue.message);
+  }
+  return result;
+}
+
 export async function saveProductAction(raw: unknown): Promise<Result> {
   await requireAdmin();
   const parsed = productInputSchema.safeParse(raw);
-  if (!parsed.success) return { ok: false, code: "INVALID", message: messages.INVALID, fieldErrors: parsed.error.flatten().fieldErrors };
+  if (!parsed.success) return { ok: false, code: "INVALID", message: messages.INVALID, fieldErrors: serializeIssues(parsed.error.issues) };
   try {
     const result = await saveProduct(parsed.data);
     const paths = ["/admin/produits", `/admin/produits/${encodeURIComponent(result.id)}`, "/", `/produits/${encodeURIComponent(result.slug)}`];

@@ -3,16 +3,14 @@ import { Prisma } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { ProductInput, productInputSchema } from "@/lib/validation/product";
+import { mapUniqueConstraintTarget } from "@/lib/catalog/unique-constraint";
 
-export type ProductMutationCode = "INVALID" | "NOT_FOUND" | "TAMPERED_VARIANT" | "DUPLICATE_SLUG" | "DUPLICATE_SKU" | "UNKNOWN";
+export type ProductMutationCode = "INVALID" | "NOT_FOUND" | "TAMPERED_VARIANT" | "DUPLICATE_SLUG" | "DUPLICATE_SKU" | "DUPLICATE_VARIANT" | "UNKNOWN";
 export class ProductMutationError extends Error { constructor(public readonly code: ProductMutationCode, options?: ErrorOptions) { super(code, options); this.name = "ProductMutationError"; } }
 
 function uniqueCode(error: unknown): ProductMutationCode | undefined {
   if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") return;
-  const target = Array.isArray(error.meta?.target) ? error.meta.target.join(" ") : String(error.meta?.target ?? "");
-  if (target.includes("slug")) return "DUPLICATE_SLUG";
-  if (target.includes("sku")) return "DUPLICATE_SKU";
-  return "DUPLICATE_SKU";
+  return mapUniqueConstraintTarget(error.meta?.target);
 }
 
 export async function saveProduct(raw: ProductInput) {
@@ -56,7 +54,7 @@ export async function saveProduct(raw: ProductInput) {
   } catch (error) {
     if (error instanceof ProductMutationError) throw error;
     const code = uniqueCode(error);
-    if (code) throw new ProductMutationError(code);
+    if (code && code !== "UNKNOWN") throw new ProductMutationError(code, { cause: error });
     throw new ProductMutationError("UNKNOWN", { cause: error });
   }
 }

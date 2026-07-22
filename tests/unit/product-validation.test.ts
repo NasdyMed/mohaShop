@@ -36,4 +36,16 @@ describe("productInputSchema", () => {
     expect(productInputSchema.safeParse({ ...valid, variants: [{ ...valid.variants[0], sku: "BAD SKU" }] }).success).toBe(false);
     expect(productInputSchema.safeParse({ ...valid, variants: [{ ...valid.variants[0], stock: Number.MAX_SAFE_INTEGER }] }).success).toBe(false);
   });
+  it("rejette les identifiants persistés dupliqués au second chemin", () => {
+    const imageId = "cm12345678901234567890123";
+    const variantId = "cm22345678901234567890123";
+    const result = productInputSchema.safeParse({ ...valid,
+      images: [{ ...valid.images[0], id: imageId }, { ...valid.images[0], id: imageId, url: "https://example.com/other.webp", position: 1 }],
+      variants: [{ ...valid.variants[0], id: variantId }, { ...valid.variants[0], id: variantId, sku: "OTHER", size: "39" }],
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: ["images", 1, "id"] }), expect.objectContaining({ path: ["variants", 1, "id"] }),
+    ]));
+  });
 });

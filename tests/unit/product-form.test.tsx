@@ -48,6 +48,16 @@ describe("ProductForm", () => {
     expect(screen.getByRole("textbox", { name: "Slug" })).toHaveValue("botte-atlas");
   });
 
+  it("affiche les erreurs simples, imbriquées et de publication près des champs", async () => {
+    mocks.save.mockResolvedValue({ ok: false, code: "INVALID", message: "Vérifiez les champs du produit.", fieldErrors: {
+      priceDh: ["Prix invalide."], description: ["Description invalide."], images: ["Ajoutez une image."], variants: ["Ajoutez une déclinaison."],
+      "images.0.alt": ["Alt invalide."], "variants.0.stock": ["Stock invalide."],
+    } });
+    render(<ProductForm initialValue={validDraft} />);
+    fireEvent.submit(screen.getByRole("button", { name: "Enregistrer" }).closest("form")!);
+    for (const error of ["Prix invalide.", "Description invalide.", "Ajoutez une image.", "Ajoutez une déclinaison.", "Alt invalide.", "Stock invalide."]) expect(await screen.findByText(error)).toBeVisible();
+  });
+
   it("verrouille deux événements de téléversement synchrones et affiche l'erreur", async () => {
     let resolve!: (value: unknown) => void;
     mocks.upload.mockReturnValue(new Promise((done) => { resolve = done; }));
