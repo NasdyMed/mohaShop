@@ -29,7 +29,7 @@ function fillAndGetForm() {
 
 describe("LoginForm", () => {
   it("locks synchronously when two submit events occur in the same turn", async () => {
-    let resolveSignIn!: (value: { ok: boolean }) => void;
+    let resolveSignIn!: (value: Awaited<ReturnType<typeof signIn>>) => void;
     mockedSignIn.mockReturnValueOnce(
       new Promise((resolve) => {
         resolveSignIn = resolve;
@@ -44,7 +44,7 @@ describe("LoginForm", () => {
 
     expect(mockedSignIn).toHaveBeenCalledTimes(1);
 
-    await act(async () => resolveSignIn({ ok: false }));
+    await act(async () => resolveSignIn({ ok: false, error: "CredentialsSignin", status: 401, url: null }));
   });
 
   it("releases the lock after failed authentication so the user can retry", async () => {
