@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Boutique Bottes",
-  description: "Boutique de bottes marocaines",
+  title: "Maison Botte — Bottes au Maroc",
+  description: "Une collection de bottes élégantes, disponible au Maroc.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
