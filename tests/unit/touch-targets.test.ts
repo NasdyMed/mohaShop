@@ -15,4 +15,10 @@ describe("storefront touch targets", () => {
     const css = read("app/globals.css");
     expect(css).toMatch(/\.touch-link\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/s);
   });
+
+  it("adapte le titre de connexion à la largeur réelle de sa carte", () => {
+    const css = read("app/globals.css");
+    expect(css).toMatch(/\.admin-login-card\s*\{[^}]*container-type:\s*inline-size;/s);
+    expect(css).toMatch(/\.admin-login-card h1[^}]*font-size:\s*clamp\([^;]*cqi[^;]*\);[^}]*line-height:[^;]+;[^}]*overflow-wrap:\s*anywhere;/s);
+  });
 });
