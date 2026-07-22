@@ -1,15 +1,25 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { ZodError } from "zod";
 
 import { createOrder, OrderCreationError } from "@/lib/orders/create-order";
+import { getCheckoutRateLimiter, normalizeCheckoutPhone, normalizeForwardedIp } from "@/lib/security/checkout-rate-limit";
 
 type CreateOrderActionResult =
   | { ok: true; number: string }
-  | { ok: false; code: "INVALID" | "OUT_OF_STOCK" | "UNKNOWN"; fieldErrors?: Record<string, string[]> };
+  | { ok: false; code: "INVALID" | "OUT_OF_STOCK" | "UNKNOWN"; fieldErrors?: Record<string, string[]> }
+  | { ok: false; code: "RATE_LIMITED"; message: string };
 
 export async function createOrderAction(rawInput: unknown): Promise<CreateOrderActionResult> {
+  let forwardedFor: string | null = null;
+  try { forwardedFor = (await headers()).get("x-forwarded-for"); }
+  catch { console.error("checkout_rate_limit_failed", { cause: "HEADERS_UNAVAILABLE" }); }
+  const rawPhone = rawInput && typeof rawInput === "object" && "phone" in rawInput ? (rawInput as { phone?: unknown }).phone : undefined;
+  const allowed = await getCheckoutRateLimiter().allow({ ip: normalizeForwardedIp(forwardedFor), phone: normalizeCheckoutPhone(rawPhone) });
+  if (!allowed) return { ok: false, code: "RATE_LIMITED", message: "Trop de commandes ont été tentées. Veuillez réessayer dans quelques minutes." };
+
   let result;
   try {
     result = await createOrder(rawInput);

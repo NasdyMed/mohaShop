@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   createOrder: vi.fn(),
   revalidatePath: vi.fn(),
+  headers: vi.fn(),
+  allow: vi.fn(),
 }));
 
 vi.mock("@/lib/orders/create-order", () => {
@@ -18,13 +20,35 @@ vi.mock("@/lib/orders/create-order", () => {
   return { createOrder: mocks.createOrder, OrderCreationError };
 });
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
+vi.mock("next/headers", () => ({ headers: mocks.headers }));
+vi.mock("@/lib/security/checkout-rate-limit", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/security/checkout-rate-limit")>();
+  return { ...actual, getCheckoutRateLimiter: () => ({ allow: mocks.allow }) };
+});
 
 import { createOrderAction } from "@/app/actions/create-order";
 import { OrderCreationError } from "@/lib/orders/create-order";
 import { checkoutSchema } from "@/lib/validation/checkout";
 
 describe("createOrderAction", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.headers.mockResolvedValue(new Headers({ "x-forwarded-for": "192.0.2.1, 10.0.0.1" }));
+    mocks.allow.mockResolvedValue(true);
+  });
+
+  it("returns a safe retry result before order work when either bucket is limited", async () => {
+    mocks.allow.mockResolvedValue(false);
+    const input = { phone: " 06 12 34 56 78 ", privateCustomer: "must not log" };
+
+    await expect(createOrderAction(input)).resolves.toEqual({
+      ok: false,
+      code: "RATE_LIMITED",
+      message: "Trop de commandes ont été tentées. Veuillez réessayer dans quelques minutes.",
+    });
+    expect(mocks.allow).toHaveBeenCalledWith({ ip: "192.0.2.1", phone: "+212612345678" });
+    expect(mocks.createOrder).not.toHaveBeenCalled();
+  });
 
   it("returns committed success even when cache revalidation fails", async () => {
     mocks.createOrder.mockResolvedValue({ number: "BOT-ABCDEFGHIJ", productSlugs: ["bottes-noires"] });

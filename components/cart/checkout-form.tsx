@@ -17,6 +17,7 @@ const initialFields: CustomerFields = { firstName: "", lastName: "", phone: "", 
 const failureMessages = {
   INVALID: "Certaines informations sont invalides.",
   OUT_OF_STOCK: "Un article n’est plus disponible dans la quantité demandée.",
+  RATE_LIMITED: "Trop de commandes ont été tentées. Veuillez réessayer dans quelques minutes.",
   UNKNOWN: "Une erreur inattendue est survenue. Veuillez réessayer.",
 } as const;
 
