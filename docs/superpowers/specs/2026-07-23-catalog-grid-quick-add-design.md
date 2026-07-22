@@ -31,7 +31,7 @@ Un composant client `QuickVariantSelector` est intégré à chaque carte.
 6. Après sélection d’une pointure disponible, le bouton « Ajouter au panier » ajoute une unité de la variante exacte au panier existant.
 7. Une confirmation courte est annoncée visuellement et aux technologies d’assistance.
 
-Les pastilles utilisent une table de couleurs françaises connues (`Noir`, `Cognac`, `Marron`, `Sable`, `Beige`, `Blanc`, `Gris`). Une couleur inconnue utilise une pastille neutre ; son nom textuel et son libellé accessible restent la source de vérité afin de ne pas afficher une teinte trompeuse.
+Les pastilles utilisent une table de couleurs françaises connues (`Noir`, `Cognac`, `Marron`, `Sable`, `Beige`, `Blanc`, `Gris`, `Bleu`). Une couleur inconnue utilise une pastille neutre ; son nom textuel et son libellé accessible restent la source de vérité afin de ne pas afficher une teinte trompeuse.
 
 Le stock présenté dans le catalogue est indicatif. La création de commande continue de recalculer le prix et de vérifier le stock côté serveur.
 
