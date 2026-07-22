@@ -49,17 +49,32 @@ async function cleanup() {
 }
 
 beforeAll(async () => {
-  const explicitTestUrl = process.env.TEST_DATABASE_URL;
-  const configuredUrl = explicitTestUrl ?? process.env.DATABASE_URL;
+  const configuredUrl = process.env.TEST_DATABASE_URL;
+  const requirement =
+    "Set TEST_DATABASE_URL to an isolated PostgreSQL test database or Neon test branch whose database name contains 'test' (for example, boutique_test).";
   if (!configuredUrl) {
-    throw new Error("Integration precondition: set TEST_DATABASE_URL to an isolated PostgreSQL test database.");
+    throw new Error(`Integration precondition: ${requirement}`);
   }
-  const parsed = new URL(configuredUrl);
-  const databaseName = parsed.pathname.slice(1).toLowerCase();
-  const safeByName = /(^|[_-])(test|testing)([_-]|$)/.test(databaseName);
-  if (!explicitTestUrl && !safeByName && process.env.ALLOW_INTEGRATION_DATABASE !== "true") {
+
+  let parsed: URL;
+  try {
+    parsed = new URL(configuredUrl);
+  } catch {
+    throw new Error(`Integration precondition: TEST_DATABASE_URL is not a valid URL. ${requirement}`);
+  }
+  if (parsed.protocol !== "postgresql:" && parsed.protocol !== "postgres:") {
+    throw new Error(`Integration precondition: TEST_DATABASE_URL must use the postgres or postgresql protocol. ${requirement}`);
+  }
+
+  let databaseName: string;
+  try {
+    databaseName = decodeURIComponent(parsed.pathname.slice(1));
+  } catch {
+    throw new Error(`Integration precondition: TEST_DATABASE_URL has an invalid database name. ${requirement}`);
+  }
+  if (!databaseName || !/test/i.test(databaseName)) {
     throw new Error(
-      "Refusing integration tests against a production-like DATABASE_URL. Use TEST_DATABASE_URL, a database named with 'test', or ALLOW_INTEGRATION_DATABASE=true.",
+      `Refusing integration tests because the TEST_DATABASE_URL database name does not contain 'test'. ${requirement}`,
     );
   }
   process.env.DATABASE_URL = configuredUrl;
