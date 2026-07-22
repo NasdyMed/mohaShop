@@ -1,0 +1,13 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+const mocks = vi.hoisted(() => ({ requireAdmin: vi.fn(), put: vi.fn(), randomUUID: vi.fn(() => "12345678-1234-4234-8234-123456789abc") }));
+vi.mock("@/lib/auth/require-admin", () => ({ requireAdmin: mocks.requireAdmin }));
+vi.mock("@vercel/blob", () => ({ put: mocks.put }));
+vi.mock("node:crypto", async (importOriginal) => ({ ...await importOriginal<typeof import("node:crypto")>(), randomUUID: mocks.randomUUID }));
+import { uploadProductImageAction } from "@/app/actions/upload-product-image";
+describe("uploadProductImageAction", () => {
+  beforeEach(() => vi.clearAllMocks());
+  it("authentifie avant de lire le formulaire", async () => { mocks.requireAdmin.mockRejectedValue(new Error("NEXT_REDIRECT")); const form = { get: vi.fn() } as unknown as FormData; await expect(uploadProductImageAction(form)).rejects.toThrow("NEXT_REDIRECT"); expect((form.get as ReturnType<typeof vi.fn>)).not.toHaveBeenCalled(); });
+  it("rejette type et taille invalides", async () => { mocks.requireAdmin.mockResolvedValue({}); const bad = new FormData(); bad.set("file", new File(["x"], "x.svg", { type: "image/svg+xml" })); expect((await uploadProductImageAction(bad)).ok).toBe(false); const huge = new FormData(); huge.set("file", new File([new Uint8Array(5 * 1024 * 1024 + 1)], "x.jpg", { type: "image/jpeg" })); expect((await uploadProductImageAction(huge)).ok).toBe(false); expect(mocks.put).not.toHaveBeenCalled(); });
+  it("utilise un chemin aléatoire sans nom original", async () => { mocks.requireAdmin.mockResolvedValue({}); mocks.put.mockResolvedValue({ url: "https://blob.example/image.webp" }); const form = new FormData(); const file = new File(["abc"], "secret-client-name.webp", { type: "image/webp" }); form.set("file", file); await expect(uploadProductImageAction(form)).resolves.toEqual({ ok: true, url: "https://blob.example/image.webp" }); const [path, body, options] = mocks.put.mock.calls[0]; expect(path).toMatch(/^products\/[0-9a-f-]{36}\.webp$/); expect(path).not.toContain("secret-client-name"); expect(body).toBe(file); expect(options).toEqual({ access: "public", addRandomSuffix: true }); });
+  it("masque les erreurs fournisseur", async () => { mocks.requireAdmin.mockResolvedValue({}); mocks.put.mockRejectedValue(new Error("token secret")); const log = vi.spyOn(console, "error").mockImplementation(() => undefined); const form = new FormData(); form.set("file", new File(["abc"], "x.png", { type: "image/png" })); await expect(uploadProductImageAction(form)).resolves.toMatchObject({ ok: false, message: "Le téléversement a échoué." }); expect(JSON.stringify(log.mock.calls)).not.toContain("token secret"); log.mockRestore(); });
+});

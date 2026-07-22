@@ -13,6 +13,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <header className="admin-header">
         <Link className="brand" href="/admin">Maison Botte</Link>
         <nav aria-label="Administration">
+          <Link href="/admin/produits">Produits</Link>
           <Link href="/admin/commandes">Commandes</Link>
           <span>{session.user.email}</span>
           <LogoutButton />
