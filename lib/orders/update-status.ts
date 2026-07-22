@@ -6,8 +6,11 @@ import { canTransition } from "@/lib/orders/status";
 
 const inputSchema = z.object({ orderId: z.string().trim().min(1).max(128), target: z.nativeEnum(OrderStatus) }).strict();
 export type OrderStatusUpdateCode = "INVALID" | "NOT_FOUND" | "INVALID_TRANSITION" | "UNKNOWN";
+export type OrderStatusInternalCode = "RETRY_EXHAUSTED" | "UNEXPECTED";
 export class OrderStatusUpdateError extends Error {
-  constructor(public readonly code: OrderStatusUpdateCode) { super(code); this.name = "OrderStatusUpdateError"; }
+  constructor(public readonly code: OrderStatusUpdateCode, public readonly internalCode?: OrderStatusInternalCode, options?: ErrorOptions) {
+    super(code, options); this.name = "OrderStatusUpdateError";
+  }
 }
 const MAX_ATTEMPTS = 5;
 const retryable = (error: unknown) => error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034";
@@ -29,9 +32,10 @@ export async function updateOrderStatus(orderId: unknown, target: unknown) {
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     } catch (error) {
       if (error instanceof OrderStatusUpdateError) throw error;
-      if (!retryable(error) || attempt === MAX_ATTEMPTS) throw new OrderStatusUpdateError("UNKNOWN");
+      if (!retryable(error)) throw new OrderStatusUpdateError("UNKNOWN", "UNEXPECTED", { cause: error });
+      if (attempt === MAX_ATTEMPTS) throw new OrderStatusUpdateError("UNKNOWN", "RETRY_EXHAUSTED", { cause: error });
       await new Promise((resolve) => setTimeout(resolve, Math.min(200, 20 * 2 ** (attempt - 1))));
     }
   }
-  throw new OrderStatusUpdateError("UNKNOWN");
+  throw new OrderStatusUpdateError("UNKNOWN", "UNEXPECTED");
 }

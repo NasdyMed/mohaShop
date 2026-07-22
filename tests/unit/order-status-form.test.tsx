@@ -38,4 +38,14 @@ describe("OrderStatusForm", () => {
     fireEvent.submit(screen.getByRole("button", { name: "Mettre à jour" }).closest("form")!);
     await waitFor(() => expect(screen.getByText("Ce changement n’est pas autorisé.")).toHaveAttribute("aria-live", "polite"));
   });
+
+  it("reports an uncertain network failure and unlocks for retry", async () => {
+    mocks.update.mockRejectedValueOnce(new Error("network")).mockResolvedValueOnce({ ok: true });
+    render(<OrderStatusForm orderId="order_123" targets={[OrderStatus.CONFIRMED]} />);
+    const form = screen.getByRole("button", { name: "Mettre à jour" }).closest("form")!;
+    fireEvent.submit(form);
+    await waitFor(() => expect(screen.getByText("La mise à jour a peut-être échoué. Actualisez la page avant de réessayer.")).toHaveAttribute("aria-live", "polite"));
+    fireEvent.submit(form);
+    await waitFor(() => expect(mocks.update).toHaveBeenCalledTimes(2));
+  });
 });

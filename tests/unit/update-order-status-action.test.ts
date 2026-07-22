@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/auth/require-admin", () => ({ requireAdmin: mocks.requireAdmin }));
 vi.mock("@/lib/orders/update-status", () => {
   class OrderStatusUpdateError extends Error {
-    constructor(public readonly code: string) { super(code); }
+    constructor(public readonly code: string, public readonly internalCode?: string, options?: ErrorOptions) { super(code, options); }
   }
   return { updateOrderStatus: mocks.updateOrderStatus, OrderStatusUpdateError };
 });
@@ -59,7 +59,24 @@ describe("updateOrderStatusAction", () => {
     mocks.revalidatePath.mockImplementation(() => { throw new Error("cache unavailable"); });
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
     await expect(updateOrderStatusAction({ orderId: "order_123", target: "CONFIRMED" })).resolves.toEqual({ ok: true });
-    expect(JSON.stringify(log.mock.calls)).not.toContain("order_123");
+    expect(mocks.revalidatePath).toHaveBeenCalledTimes(4);
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/");
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/produits", "layout");
+    expect(log).toHaveBeenCalledWith("cache_revalidation_failed", expect.objectContaining({ failedCount: 4 }));
+    log.mockRestore();
+  });
+
+  it("logs only allowlisted diagnostics for exhausted retries", async () => {
+    mocks.requireAdmin.mockResolvedValue({ user: { id: "admin" } });
+    const cause = Object.assign(new Error("private database detail"), { code: "P2034", query: "secret" });
+    mocks.updateOrderStatus.mockRejectedValue(new OrderStatusUpdateError("UNKNOWN", "RETRY_EXHAUSTED", { cause }));
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await updateOrderStatusAction({ orderId: "private-order", target: "CONFIRMED" });
+    expect(log).toHaveBeenCalledWith("order_status_update_failed", {
+      internalCode: "RETRY_EXHAUSTED", causeName: "Error", causeCode: "P2034",
+    });
+    expect(JSON.stringify(log.mock.calls)).not.toContain("private-order");
+    expect(JSON.stringify(log.mock.calls)).not.toContain("private database detail");
     log.mockRestore();
   });
 });

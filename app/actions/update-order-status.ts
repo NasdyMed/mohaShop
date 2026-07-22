@@ -15,10 +15,24 @@ export async function updateOrderStatusAction(raw: unknown): Promise<Result> {
   try { await updateOrderStatus(input.data.orderId, input.data.target); }
   catch (error) {
     const code = error instanceof OrderStatusUpdateError ? error.code : "UNKNOWN";
-    if (code === "UNKNOWN") console.error("order_status_update_failed", { errorName: error instanceof Error ? error.name : "UnknownError" });
+    if (code === "UNKNOWN") {
+      const wrapped = error instanceof OrderStatusUpdateError ? error : undefined;
+      const cause = wrapped?.cause;
+      const causeName = cause instanceof Error ? cause.name : undefined;
+      const causeCode = typeof cause === "object" && cause !== null && "code" in cause && String(cause.code) === "P2034" ? "P2034" : undefined;
+      console.error("order_status_update_failed", { internalCode: wrapped?.internalCode ?? "UNEXPECTED", causeName, causeCode });
+    }
     return { ok: false, code, message: messages[code] };
   }
-  try { revalidatePath("/admin/commandes"); revalidatePath(`/admin/commandes/${encodeURIComponent(input.data.orderId)}`); revalidatePath("/"); revalidatePath("/produits", "layout"); }
-  catch (error) { console.error("cache_revalidation_failed", { errorName: error instanceof Error ? error.name : "UnknownError" }); }
+  const invalidations: Array<[string, "layout"?]> = [["/admin/commandes"], [`/admin/commandes/${encodeURIComponent(input.data.orderId)}`], ["/"], ["/produits", "layout"]];
+  const failedPaths: string[] = [];
+  for (const [path, type] of invalidations) {
+    try {
+      if (type) revalidatePath(path, type);
+      else revalidatePath(path);
+    }
+    catch { failedPaths.push(path); }
+  }
+  if (failedPaths.length) console.error("cache_revalidation_failed", { failedCount: failedPaths.length, failedPaths });
   return { ok: true };
 }
