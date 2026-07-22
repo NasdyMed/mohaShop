@@ -24,15 +24,20 @@ export async function updateOrderStatusAction(raw: unknown): Promise<Result> {
     }
     return { ok: false, code, message: messages[code] };
   }
-  const invalidations: Array<[string, "layout"?]> = [["/admin/commandes"], [`/admin/commandes/${encodeURIComponent(input.data.orderId)}`], ["/"], ["/produits", "layout"]];
-  const failedPaths: string[] = [];
-  for (const [path, type] of invalidations) {
+  const invalidations: Array<[label: string, path: string, type?: "layout"]> = [
+    ["admin-list", "/admin/commandes"],
+    ["admin-detail", `/admin/commandes/${encodeURIComponent(input.data.orderId)}`],
+    ["storefront", "/"],
+    ["products", "/produits", "layout"],
+  ];
+  const failedLabels: string[] = [];
+  for (const [label, path, type] of invalidations) {
     try {
       if (type) revalidatePath(path, type);
       else revalidatePath(path);
     }
-    catch { failedPaths.push(path); }
+    catch { failedLabels.push(label); }
   }
-  if (failedPaths.length) console.error("cache_revalidation_failed", { failedCount: failedPaths.length, failedPaths });
+  if (failedLabels.length) console.error("cache_revalidation_failed", { failedCount: failedLabels.length, failedLabels });
   return { ok: true };
 }

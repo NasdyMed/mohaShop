@@ -62,7 +62,12 @@ describe("updateOrderStatusAction", () => {
     expect(mocks.revalidatePath).toHaveBeenCalledTimes(4);
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/");
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/produits", "layout");
-    expect(log).toHaveBeenCalledWith("cache_revalidation_failed", expect.objectContaining({ failedCount: 4 }));
+    expect(log).toHaveBeenCalledWith("cache_revalidation_failed", {
+      failedCount: 4,
+      failedLabels: ["admin-list", "admin-detail", "storefront", "products"],
+    });
+    expect(JSON.stringify(log.mock.calls)).not.toContain("order_123");
+    expect(JSON.stringify(log.mock.calls)).not.toContain("/admin/commandes/order_123");
     log.mockRestore();
   });
 
