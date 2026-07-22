@@ -14,9 +14,12 @@ function nonEmptyString(value: unknown): value is string {
 
 export function sanitizeCartItems(value: unknown): CartItem[] {
   if (!Array.isArray(value)) return [];
+  const sanitized: CartItem[] = [];
+  const variantIds = new Set<string>();
 
-  return value.flatMap((candidate): CartItem[] => {
-    if (!candidate || typeof candidate !== "object") return [];
+  for (const candidate of value) {
+    if (sanitized.length === 30) break;
+    if (!candidate || typeof candidate !== "object") continue;
     const item = candidate as Record<string, unknown>;
     if (!nonEmptyString(item.variantId)
       || !nonEmptyString(item.productSlug)
@@ -24,11 +27,13 @@ export function sanitizeCartItems(value: unknown): CartItem[] {
       || !nonEmptyString(item.size)
       || !nonEmptyString(item.color)
       || (item.imageUrl !== null && typeof item.imageUrl !== "string")
-      || !Number.isInteger(item.unitPriceDh) || (item.unitPriceDh as number) <= 0
-      || !Number.isInteger(item.availableStock) || (item.availableStock as number) <= 0
-      || !Number.isInteger(item.quantity) || (item.quantity as number) <= 0) return [];
+      || !Number.isSafeInteger(item.unitPriceDh) || (item.unitPriceDh as number) <= 0 || (item.unitPriceDh as number) > 1_000_000
+      || !Number.isSafeInteger(item.availableStock) || (item.availableStock as number) <= 0 || (item.availableStock as number) > 1_000_000
+      || !Number.isSafeInteger(item.quantity) || (item.quantity as number) <= 0
+      || variantIds.has(item.variantId)) continue;
 
-    return [{
+    variantIds.add(item.variantId);
+    sanitized.push({
       variantId: item.variantId,
       productSlug: item.productSlug,
       productName: item.productName,
@@ -38,8 +43,10 @@ export function sanitizeCartItems(value: unknown): CartItem[] {
       unitPriceDh: item.unitPriceDh as number,
       availableStock: item.availableStock as number,
       quantity: Math.min(item.quantity as number, item.availableStock as number),
-    }];
-  });
+    });
+  }
+
+  return sanitized;
 }
 
 export function cartReducer(state: readonly CartItem[], action: CartAction): CartItem[] {

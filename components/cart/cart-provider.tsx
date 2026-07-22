@@ -27,6 +27,14 @@ function parseStoredCart(value: string | null): CartItem[] {
   }
 }
 
+function readStoredCart(): CartItem[] {
+  try {
+    return parseStoredCart(window.localStorage.getItem(STORAGE_KEY));
+  } catch {
+    return [];
+  }
+}
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [{ items, hydrated }, dispatch] = useReducer(
     (state: { items: CartItem[]; hydrated: boolean }, action: CartAction) => ({
@@ -37,11 +45,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   );
 
   useEffect(() => {
-    dispatch({ type: "hydrate", items: parseStoredCart(window.localStorage.getItem(STORAGE_KEY)) });
+    dispatch({ type: "hydrate", items: readStoredCart() });
   }, []);
 
   useEffect(() => {
-    if (hydrated) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    if (!hydrated) return;
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    } catch {
+      // Persistence is best-effort; the in-memory cart remains usable.
+    }
   }, [hydrated, items]);
 
   const value = useMemo(() => ({

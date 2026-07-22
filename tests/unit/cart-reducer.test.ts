@@ -106,6 +106,34 @@ describe("cartReducer", () => {
 
     expect(cartReducer([], { type: "hydrate", items })).toEqual([]);
   });
+
+  it("keeps the first valid snapshot for duplicate variant IDs", () => {
+    const first = { ...atlas, quantity: 1 };
+    const conflicting = { ...atlas, productName: "Conflicting", quantity: 2 };
+
+    expect(cartReducer([], { type: "hydrate", items: [first, conflicting] })).toEqual([first]);
+  });
+
+  it("rejects unsafe and oversized hydrated numbers", () => {
+    const items = [
+      { ...atlas, unitPriceDh: Number.MAX_SAFE_INTEGER + 1, quantity: 1 },
+      { ...atlas, unitPriceDh: 1_000_001, quantity: 1 },
+      { ...atlas, availableStock: Number.MAX_SAFE_INTEGER + 1, quantity: 1 },
+      { ...atlas, availableStock: 1_000_001, quantity: 1 },
+      { ...atlas, quantity: Number.MAX_SAFE_INTEGER + 1 },
+    ];
+
+    expect(cartReducer([], { type: "hydrate", items })).toEqual([]);
+  });
+
+  it("caps hydration at thirty unique valid lines", () => {
+    const items = Array.from({ length: 35 }, (_, index) => ({ ...atlas, variantId: `v${index}`, quantity: 1 }));
+
+    const next = cartReducer([], { type: "hydrate", items });
+
+    expect(next).toHaveLength(30);
+    expect(next.map((item) => item.variantId)).toEqual(items.slice(0, 30).map((item) => item.variantId));
+  });
 });
 
 describe("cart selectors", () => {

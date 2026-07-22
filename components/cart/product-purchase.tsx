@@ -6,5 +6,5 @@ import { AddToCart, type ProductSnapshot } from "./add-to-cart";
 
 export function ProductPurchase({ product, variants }: { product: ProductSnapshot; variants: readonly CatalogVariant[] }) {
   const [variant, setVariant] = useState<CatalogVariant | null>(null);
-  return <><VariantPicker variants={variants} onSelect={setVariant} /><AddToCart product={product} variant={variant} /></>;
+  return <><VariantPicker variants={variants} onSelect={setVariant} /><AddToCart key={variant?.id ?? "unselected"} product={product} variant={variant} /></>;
 }
