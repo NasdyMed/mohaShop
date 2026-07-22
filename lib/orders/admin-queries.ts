@@ -1,0 +1,22 @@
+import "server-only";
+import { OrderStatus, Prisma } from "@prisma/client";
+import { db } from "@/lib/db";
+const PAGE_SIZE = 20;
+export async function listAdminOrders(input: { status?: string; q?: string; page?: number }) {
+  const status = Object.values(OrderStatus).includes(input.status as OrderStatus) ? input.status as OrderStatus : undefined;
+  const q = input.q?.trim().slice(0, 100) || "";
+  const page = Math.min(10_000, Math.max(1, Math.trunc(input.page || 1)));
+  const where: Prisma.OrderWhereInput = { ...(status ? { status } : {}), ...(q ? { OR: [
+    { number: { contains: q, mode: "insensitive" } }, { customerFirstName: { contains: q, mode: "insensitive" } },
+    { customerLastName: { contains: q, mode: "insensitive" } }, { customerPhone: { contains: q } },
+  ] } : {}) };
+  const [total, orders] = await db.$transaction([
+    db.order.count({ where }), db.order.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE,
+      select: { id: true, number: true, customerFirstName: true, customerLastName: true, customerPhone: true, totalDh: true, status: true, createdAt: true } }),
+  ], { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
+  return { orders, total, page, pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)), status, q };
+}
+export async function getAdminOrder(id: string) {
+  if (!id || id.length > 128) return null;
+  return db.order.findUnique({ where: { id }, select: { id: true, number: true, customerFirstName: true, customerLastName: true, customerPhone: true, customerAddress: true, totalDh: true, status: true, stockRestored: true, createdAt: true, updatedAt: true, items: { select: { id: true, productName: true, size: true, color: true, unitPriceDh: true, quantity: true } } } });
+}

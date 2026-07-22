@@ -1,7 +1,7 @@
 import { OrderStatus } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 
-import { canTransition } from "@/lib/orders/status";
+import { allowedTransitions, canTransition, orderStatusLabels } from "@/lib/orders/status";
 
 describe("canTransition", () => {
   const statuses = Object.values(OrderStatus);
@@ -19,5 +19,14 @@ describe("canTransition", () => {
 
   it.each(cases)("reports %s -> %s as %s", (from, to, expected) => {
     expect(canTransition(from, to)).toBe(expected);
+  });
+
+  it("exposes the French label and allowed targets from the same transition source", () => {
+    expect(orderStatusLabels[OrderStatus.SHIPPED]).toBe("Expédiée");
+    expect(allowedTransitions(OrderStatus.CONFIRMED)).toEqual([
+      OrderStatus.SHIPPED,
+      OrderStatus.CANCELLED,
+    ]);
+    expect(allowedTransitions(OrderStatus.DELIVERED)).toEqual([]);
   });
 });
