@@ -1,0 +1,110 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+
+import { createOrderAction } from "@/app/actions/create-order";
+import { formatPriceDh } from "@/components/shop/product-card";
+import { checkoutSchema } from "@/lib/validation/checkout";
+import { useCart } from "./cart-provider";
+
+type CustomerFields = { firstName: string; lastName: string; phone: string; address: string };
+type FieldName = keyof CustomerFields;
+
+const initialFields: CustomerFields = { firstName: "", lastName: "", phone: "", address: "" };
+
+const failureMessages = {
+  INVALID: "Certaines informations sont invalides.",
+  OUT_OF_STOCK: "Un article n’est plus disponible dans la quantité demandée.",
+  UNKNOWN: "Une erreur inattendue est survenue. Veuillez réessayer.",
+} as const;
+
+export function CheckoutForm() {
+  const { dispatch, hydrated, itemCount, items, totalDh } = useCart();
+  const router = useRouter();
+  const [fields, setFields] = useState(initialFields);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldName, string>>>({});
+  const [formError, setFormError] = useState("");
+  const [pending, setPending] = useState(false);
+
+  if (!hydrated) return <div className="cart-status" role="status">Chargement de votre commande…</div>;
+  if (items.length === 0) return <section className="cart-empty"><p className="eyebrow">Votre commande</p><h1>Votre panier est vide.</h1><p>Ajoutez une paire à votre panier avant de passer commande.</p><div className="empty-actions"><Link className="primary-link" href="/">Voir la collection</Link><Link className="secondary-link" href="/panier">Retour au panier</Link></div></section>;
+
+  const actionItems = items.map(({ variantId, quantity }) => ({ variantId, quantity }));
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (pending) return;
+    setFormError("");
+    setFieldErrors({});
+    const parsed = checkoutSchema.safeParse({ ...fields, items: actionItems });
+    if (!parsed.success) {
+      const flattened = parsed.error.flatten().fieldErrors;
+      setFieldErrors({
+        firstName: flattened.firstName?.[0], lastName: flattened.lastName?.[0],
+        phone: flattened.phone?.[0], address: flattened.address?.[0],
+      });
+      setFormError("Veuillez corriger les champs indiqués.");
+      return;
+    }
+    setPending(true);
+    try {
+      const result = await createOrderAction({ ...fields, items: actionItems });
+      if (!result.ok) {
+        if (result.code === "INVALID" && result.fieldErrors) {
+          setFieldErrors({
+            firstName: result.fieldErrors.firstName?.[0], lastName: result.fieldErrors.lastName?.[0],
+            phone: result.fieldErrors.phone?.[0], address: result.fieldErrors.address?.[0],
+          });
+        }
+        setFormError(failureMessages[result.code]);
+        return;
+      }
+      dispatch({ type: "clear" });
+      router.push(`/commande/${result.number}`);
+    } catch {
+      setFormError(failureMessages.UNKNOWN);
+    } finally {
+      setPending(false);
+    }
+  }
+
+  function field(name: FieldName, value: string) {
+    setFields((current) => ({ ...current, [name]: value }));
+    if (fieldErrors[name]) setFieldErrors((current) => ({ ...current, [name]: undefined }));
+  }
+
+  return <div className="checkout-layout">
+    <section className="checkout-panel" aria-labelledby="checkout-title">
+      <p className="eyebrow">Finaliser votre achat</p><h1 id="checkout-title">Vos coordonnées</h1>
+      <p className="checkout-intro">Nous les utiliserons uniquement pour préparer et livrer cette commande.</p>
+      <form onSubmit={submit} noValidate>
+        {formError && <div className="form-error-summary" role="alert" aria-live="assertive">{formError}</div>}
+        <div className="checkout-fields">
+          <CheckoutField label="Prénom" name="firstName" autoComplete="given-name" value={fields.firstName} error={fieldErrors.firstName} onChange={field} />
+          <CheckoutField label="Nom" name="lastName" autoComplete="family-name" value={fields.lastName} error={fieldErrors.lastName} onChange={field} />
+          <CheckoutField label="Téléphone" name="phone" autoComplete="tel" inputMode="tel" value={fields.phone} error={fieldErrors.phone} onChange={field} />
+          <CheckoutField label="Adresse de livraison" name="address" autoComplete="street-address" value={fields.address} error={fieldErrors.address} onChange={field} multiline />
+        </div>
+        <button className="checkout-submit" type="submit" disabled={pending}>{pending ? "Commande en cours…" : "Confirmer ma commande"}</button>
+        <p className="submit-note">Aucun paiement en ligne — vous réglerez à la livraison.</p>
+      </form>
+    </section>
+    <aside className="checkout-summary" aria-label="Récapitulatif de la commande">
+      <h2>Récapitulatif</h2>
+      <div className="checkout-items">{items.map((item) => <div className="checkout-item" key={item.variantId}><div><strong>{item.productName}</strong><span>{item.color} · Pointure {item.size} · Quantité {item.quantity}</span></div><span>{formatPriceDh(item.unitPriceDh * item.quantity)}</span></div>)}</div>
+      <div className="checkout-total"><span>Total · {itemCount} {itemCount > 1 ? "articles" : "article"}</span><strong>{formatPriceDh(totalDh)}</strong></div>
+      <div className="delivery-payment"><span aria-hidden="true">✓</span><div><strong>Paiement à la livraison</strong><p>Réglez votre commande lors de sa réception.</p></div></div>
+    </aside>
+  </div>;
+}
+
+function CheckoutField({ label, name, autoComplete, value, error, onChange, inputMode, multiline = false }: {
+  label: string; name: FieldName; autoComplete: string; value: string; error?: string;
+  onChange: (name: FieldName, value: string) => void; inputMode?: "tel"; multiline?: boolean;
+}) {
+  const errorId = `${name}-error`;
+  const common = { id: name, name, autoComplete, value, required: true, "aria-invalid": Boolean(error), "aria-describedby": error ? errorId : undefined, onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(name, event.currentTarget.value) };
+  return <div className={`form-field${multiline ? " form-field-wide" : ""}`}><label htmlFor={name}>{label}</label>{multiline ? <textarea {...common} rows={4} /> : <input {...common} inputMode={inputMode} type={name === "phone" ? "tel" : "text"} />}{error && <p className="field-error" id={errorId}>{error}</p>}</div>;
+}
