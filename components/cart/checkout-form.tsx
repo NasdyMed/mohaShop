@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { createOrderAction } from "@/app/actions/create-order";
 import { formatPriceDh } from "@/components/shop/product-card";
@@ -27,6 +27,7 @@ export function CheckoutForm() {
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldName, string>>>({});
   const [formError, setFormError] = useState("");
   const [pending, setPending] = useState(false);
+  const submitLocked = useRef(false);
 
   if (!hydrated) return <div className="cart-status" role="status">Chargement de votre commande…</div>;
   if (items.length === 0) return <section className="cart-empty"><p className="eyebrow">Votre commande</p><h1>Votre panier est vide.</h1><p>Ajoutez une paire à votre panier avant de passer commande.</p><div className="empty-actions"><Link className="primary-link" href="/">Voir la collection</Link><Link className="secondary-link" href="/panier">Retour au panier</Link></div></section>;
@@ -35,7 +36,8 @@ export function CheckoutForm() {
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (pending) return;
+    if (submitLocked.current) return;
+    submitLocked.current = true;
     setFormError("");
     setFieldErrors({});
     const parsed = checkoutSchema.safeParse({ ...fields, items: actionItems });
@@ -46,9 +48,11 @@ export function CheckoutForm() {
         phone: flattened.phone?.[0], address: flattened.address?.[0],
       });
       setFormError("Veuillez corriger les champs indiqués.");
+      submitLocked.current = false;
       return;
     }
     setPending(true);
+    let succeeded = false;
     try {
       const result = await createOrderAction({ ...fields, items: actionItems });
       if (!result.ok) {
@@ -62,10 +66,12 @@ export function CheckoutForm() {
         return;
       }
       dispatch({ type: "clear" });
+      succeeded = true;
       router.push(`/commande/${result.number}`);
     } catch {
       setFormError(failureMessages.UNKNOWN);
     } finally {
+      if (!succeeded) submitLocked.current = false;
       setPending(false);
     }
   }

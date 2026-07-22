@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CartProvider } from "@/components/cart/cart-provider";
@@ -105,6 +106,9 @@ describe("CheckoutForm", () => {
 
     expect(await screen.findByText(message)).toBeInTheDocument();
     expect(screen.getByLabelText("Prénom")).toHaveValue("Amine");
+    expect(screen.getByLabelText("Nom")).toHaveValue("El Idrissi");
+    expect(screen.getByLabelText("Téléphone")).toHaveValue("0612345678");
+    expect(screen.getByLabelText("Adresse de livraison")).toHaveValue("12 rue des Fleurs, Rabat");
     expect(JSON.parse(localStorage.getItem("boots-cart-v1") ?? "[]")).toHaveLength(1);
     expect(push).not.toHaveBeenCalled();
   });
@@ -122,6 +126,23 @@ describe("CheckoutForm", () => {
     expect(createOrderAction).toHaveBeenCalledTimes(1);
     resolve({ ok: false, code: "UNKNOWN" });
     expect(await screen.findByRole("button", { name: "Confirmer ma commande" })).toBeEnabled();
+  });
+
+  it("bloque deux soumissions déclenchées dans le même tour de rendu", async () => {
+    let resolve!: (value: { ok: false; code: "UNKNOWN" }) => void;
+    createOrderAction.mockImplementation(() => new Promise((done) => { resolve = done; }));
+    renderCheckout();
+    await fillValidForm();
+    const form = screen.getByRole("button", { name: "Confirmer ma commande" }).closest("form")!;
+
+    act(() => {
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+
+    await waitFor(() => expect(createOrderAction).toHaveBeenCalledTimes(1));
+    resolve({ ok: false, code: "UNKNOWN" });
+    expect(await screen.findByText("Une erreur inattendue est survenue. Veuillez réessayer.")).toBeInTheDocument();
   });
 
   it("vide le panier une seule fois puis navigue vers la confirmation", async () => {
