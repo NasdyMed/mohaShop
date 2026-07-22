@@ -30,7 +30,11 @@ export function validMoroccanPhone(phone: string): boolean {
 const normalizedText = (minimum: number, maximum: number, field: string) =>
   z
     .string({ error: `${field} est requis.` })
-    .transform((value) => value.trim().replace(/\s+/gu, " "))
+    .refine(
+      (value) => !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/u.test(value),
+      `${field} contient des caractères non autorisés.`,
+    )
+    .transform((value) => value.trim().replace(/[ \t\r\n\u00a0]+/gu, " "))
     .pipe(
       z
         .string()

@@ -14,6 +14,13 @@ const validCheckout = {
   items: [{ variantId: "variant-1", quantity: 2 }],
 };
 
+function issueAt(result: ReturnType<typeof checkoutSchema.safeParse>, path: PropertyKey[]) {
+  if (result.success) return undefined;
+  return result.error.issues.find((issue) =>
+    issue.path.length === path.length && issue.path.every((part, index) => part === path[index]),
+  );
+}
+
 describe("Moroccan phone validation", () => {
   it.each([
     ["0612345678", "+212612345678"],
@@ -78,6 +85,34 @@ describe("checkoutSchema", () => {
     },
   );
 
+  it.each([
+    ["firstName", "Am\u0000ina", ["firstName"]],
+    ["lastName", "El\u0000Mansouri", ["lastName"]],
+    ["address", "12 rue\u0000 Atlas", ["address"]],
+    ["firstName", "Am\u0007ina", ["firstName"]],
+    ["lastName", "Mans\u0085ouri", ["lastName"]],
+  ] as const)("rejects unsafe control content in %s", (field, value, path) => {
+    const result = checkoutSchema.safeParse({ ...validCheckout, [field]: value });
+    const issue = issueAt(result, [...path]);
+
+    expect(result.success).toBe(false);
+    expect(issue?.message).toMatch(/caractère|autorisé|invalide/i);
+  });
+
+  it("normalizes ordinary whitespace while preserving Arabic and accented names", () => {
+    const result = checkoutSchema.safeParse({
+      ...validCheckout,
+      firstName: "  Élise\tZahra ",
+      lastName: "  بناني\nالأمين  ",
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.firstName).toBe("Élise Zahra");
+      expect(result.data.lastName).toBe("بناني الأمين");
+    }
+  });
+
   it("enforces normalized name and address boundaries", () => {
     expect(checkoutSchema.safeParse({ ...validCheckout, firstName: "A" }).success).toBe(false);
     expect(checkoutSchema.safeParse({ ...validCheckout, firstName: "A".repeat(80) }).success).toBe(true);
@@ -115,17 +150,31 @@ describe("checkoutSchema", () => {
     }).success).toBe(true);
   });
 
-  it.each([0, 1.5, 21, Number.MAX_SAFE_INTEGER + 1])("rejects invalid quantity %s", (quantity) => {
+  it.each([
+    0,
+    -1,
+    1.5,
+    21,
+    Number.MAX_SAFE_INTEGER + 1,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    Number.NEGATIVE_INFINITY,
+  ])("rejects invalid quantity %s", (quantity) => {
     const result = checkoutSchema.safeParse({
       ...validCheckout,
       items: [{ variantId: "variant-1", quantity }],
     });
     expect(result.success).toBe(false);
-    if (!result.success) expect(result.error.issues[0]?.message).toMatch(/quantité/i);
+    expect(issueAt(result, ["items", 0, "quantity"])?.message).toMatch(/quantité/i);
   });
 
   it("rejects blank and overly long variant identifiers", () => {
     expect(checkoutSchema.safeParse({ ...validCheckout, items: [{ variantId: "", quantity: 1 }] }).success).toBe(false);
+    const whitespace = checkoutSchema.safeParse({
+      ...validCheckout,
+      items: [{ variantId: "   ", quantity: 1 }],
+    });
+    expect(issueAt(whitespace, ["items", 0, "variantId"])?.message).toMatch(/référence|article/i);
     expect(checkoutSchema.safeParse({ ...validCheckout, items: [{ variantId: "v".repeat(128), quantity: 1 }] }).success).toBe(true);
     expect(checkoutSchema.safeParse({ ...validCheckout, items: [{ variantId: "v".repeat(129), quantity: 1 }] }).success).toBe(false);
   });
@@ -141,6 +190,30 @@ describe("checkoutSchema", () => {
 
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error.issues[0]?.message).toMatch(/doublon|plusieurs fois/i);
+  });
+
+  it("detects duplicate variant identifiers after trimming", () => {
+    const result = checkoutSchema.safeParse({
+      ...validCheckout,
+      items: [
+        { variantId: "variant-1", quantity: 1 },
+        { variantId: "  variant-1  ", quantity: 2 },
+      ],
+    });
+
+    expect(issueAt(result, ["items", 1, "variantId"])?.message).toMatch(/plusieurs fois|doublon/i);
+  });
+
+  it.each([
+    [{ quantity: 1 }, ["items", 0, "variantId"]],
+    [{ variantId: 42, quantity: 1 }, ["items", 0, "variantId"]],
+    [{ variantId: "variant-1" }, ["items", 0, "quantity"]],
+    [{ variantId: "variant-1", quantity: "2" }, ["items", 0, "quantity"]],
+  ] as const)("rejects missing or mistyped item fields", (item, path) => {
+    const result = checkoutSchema.safeParse({ ...validCheckout, items: [item] });
+
+    expect(result.success).toBe(false);
+    expect(issueAt(result, [...path])?.message).toMatch(/requis|référence|quantité|nombre/i);
   });
 
   it("rejects invalid phones and unexpected input fields with French errors", () => {
