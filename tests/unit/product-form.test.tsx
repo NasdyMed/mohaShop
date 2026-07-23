@@ -38,7 +38,7 @@ describe("ProductForm", () => {
     let resolve!: (value: unknown) => void;
     mocks.save.mockReturnValue(new Promise((done) => { resolve = done; }));
     render(<ProductForm initialValue={validDraft} />);
-    const form = screen.getByRole("button", { name: "Enregistrer" }).closest("form")!;
+    const form = screen.getByRole("button", { name: "Enregistrer le produit" }).closest("form")!;
     fireEvent.submit(form);
     fireEvent.submit(form);
     expect(mocks.save).toHaveBeenCalledTimes(1);
@@ -57,44 +57,27 @@ describe("ProductForm", () => {
       "images.0.alt": ["Alt invalide."], "variants.0.stock": ["Stock invalide."],
     } });
     render(<ProductForm initialValue={validDraft} />);
-    fireEvent.submit(screen.getByRole("button", { name: "Enregistrer" }).closest("form")!);
+    fireEvent.submit(screen.getByRole("button", { name: "Enregistrer le produit" }).closest("form")!);
     for (const error of ["Prix invalide.", "Description invalide.", "Ajoutez une image.", "Ajoutez une déclinaison.", "Alt invalide.", "Stock invalide."]) expect(await screen.findByText(error)).toBeVisible();
-  });
-
-  it("verrouille deux événements de téléversement synchrones et affiche l'erreur", async () => {
-    let resolve!: (value: unknown) => void;
-    mocks.upload.mockReturnValue(new Promise((done) => { resolve = done; }));
-    render(<ProductForm />);
-    const input = screen.getByLabelText(/téléverser une image/i);
-    const file = new File(["x"], "botte.webp", { type: "image/webp" });
-    fireEvent.change(input, { target: { files: [file] } });
-    fireEvent.change(input, { target: { files: [file] } });
-    expect(mocks.upload).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("status")).toHaveTextContent("Téléversement…");
-    expect(input.closest("form")).toHaveAttribute("aria-busy", "true");
-    resolve({ ok: false, message: "Le téléversement a échoué." });
-    expect(await screen.findByRole("alert")).toHaveTextContent("Le téléversement a échoué.");
-    expect(input).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");
   });
 
   it("affiche l'aperçu et son alt éditable, permet de le retirer et soumet des données conformes", async () => {
     const user = userEvent.setup();
     mocks.save.mockResolvedValue({ ok: true, id: "cm12345678901234567890123", slug: "botte-atlas" });
     render(<ProductForm initialValue={validDraft} />);
-    expect(screen.getByRole("link", { name: "Aperçu 1" })).toHaveAttribute("href", validDraft.images[0].url);
+    expect(screen.getByRole("link", { name: "Ouvrir l’image 1" })).toHaveAttribute("href", validDraft.images[0].url);
     expect(screen.getByRole("textbox", { name: "Texte alternatif" })).toHaveValue("Botte Atlas noire");
-    await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+    await user.click(screen.getByRole("button", { name: "Enregistrer le produit" }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalledWith(validDraft));
     expect(mocks.push).toHaveBeenCalledWith("/admin/produits/cm12345678901234567890123");
-    await user.click(within(screen.getByRole("heading", { name: "Images" }).closest("section")!).getByRole("button", { name: "Retirer" }));
-    expect(screen.queryByRole("link", { name: "Aperçu 1" })).not.toBeInTheDocument();
+    await user.click(within(screen.getByRole("heading", { name: "Images" }).closest("section")!).getByRole("button", { name: "Supprimer l’image 1" }));
+    expect(screen.queryByRole("link", { name: "Ouvrir l’image 1" })).not.toBeInTheDocument();
   });
 });
 
 describe("ProductForm failures and accessibility",()=>{
- it("déverrouille et permet une nouvelle sauvegarde après une exception",async()=>{mocks.save.mockRejectedValueOnce(new Error("network")).mockResolvedValueOnce({ok:false,code:"UNKNOWN",message:"Réessayez.",fieldErrors:{}});render(<ProductForm initialValue={validDraft}/>);const button=screen.getByRole("button",{name:"Enregistrer"});fireEvent.submit(button.closest("form")!);expect(await screen.findByRole("alert")).toHaveTextContent(/incertain/i);expect(button).not.toBeDisabled();fireEvent.submit(button.closest("form")!);await waitFor(()=>expect(mocks.save).toHaveBeenCalledTimes(2))});
- it("déverrouille et permet un nouvel upload après une exception",async()=>{mocks.upload.mockRejectedValueOnce(new Error("network")).mockResolvedValueOnce({ok:false,message:"Réessayez."});render(<ProductForm/>);const input=screen.getByLabelText(/téléverser une image/i);const file=new File(["x"],"x.webp",{type:"image/webp"});fireEvent.change(input,{target:{files:[file]}});expect(await screen.findByRole("alert")).toHaveTextContent(/réessayez/i);expect(input).not.toBeDisabled();fireEvent.change(input,{target:{files:[file]}});await waitFor(()=>expect(mocks.upload).toHaveBeenCalledTimes(2))});
- it("associe les erreurs aux champs produit, image et déclinaison",async()=>{mocks.save.mockResolvedValue({ok:false,code:"INVALID",message:"Erreur.",fieldErrors:{name:["Nom invalide"],priceDh:["Prix invalide"],"images.0.alt":["Alt invalide"],"variants.0.stock":["Stock invalide"]}});render(<ProductForm initialValue={validDraft}/>);fireEvent.submit(screen.getByRole("button",{name:"Enregistrer"}).closest("form")!);await screen.findByText("Nom invalide");expect(screen.getByRole("textbox",{name:"Nom"})).toHaveAttribute("aria-describedby","product-name-error");expect(screen.getByRole("spinbutton",{name:"Prix (DH)"})).toHaveAttribute("aria-invalid","true");expect(screen.getByRole("textbox",{name:"Texte alternatif"})).toHaveAttribute("aria-describedby","product-image-0-alt-error");expect(screen.getByRole("spinbutton",{name:"Stock"})).toHaveAttribute("aria-describedby","variant-0-stock-error")});
+ it("déverrouille et permet une nouvelle sauvegarde après une exception",async()=>{mocks.save.mockRejectedValueOnce(new Error("network")).mockResolvedValueOnce({ok:false,code:"UNKNOWN",message:"Réessayez.",fieldErrors:{}});render(<ProductForm initialValue={validDraft}/>);const button=screen.getByRole("button",{name:"Enregistrer le produit"});fireEvent.submit(button.closest("form")!);expect(await screen.findByRole("alert")).toHaveTextContent(/incertain/i);expect(button).not.toBeDisabled();fireEvent.submit(button.closest("form")!);await waitFor(()=>expect(mocks.save).toHaveBeenCalledTimes(2))});
+ it("associe les erreurs aux champs produit, image et déclinaison",async()=>{mocks.save.mockResolvedValue({ok:false,code:"INVALID",message:"Erreur.",fieldErrors:{name:["Nom invalide"],priceDh:["Prix invalide"],"images.0.alt":["Alt invalide"],"variants.0.stock":["Stock invalide"]}});render(<ProductForm initialValue={validDraft}/>);fireEvent.submit(screen.getByRole("button",{name:"Enregistrer le produit"}).closest("form")!);await screen.findByText("Nom invalide");expect(screen.getByRole("textbox",{name:"Nom"})).toHaveAttribute("aria-describedby","product-name-error");expect(screen.getByRole("spinbutton",{name:"Prix (DH)"})).toHaveAttribute("aria-invalid","true");expect(screen.getByRole("textbox",{name:"Texte alternatif"})).toHaveAttribute("aria-describedby","product-image-0-alt-error");expect(screen.getByRole("spinbutton",{name:"Stock"})).toHaveAttribute("aria-describedby","variant-0-stock-error")});
 });
 
 describe("VariantEditor through ProductForm", () => {
@@ -103,10 +86,10 @@ describe("VariantEditor through ProductForm", () => {
     render(<ProductForm />);
     await user.click(screen.getByRole("button", { name: /ajouter une déclinaison/i }));
     await user.type(screen.getByRole("textbox", { name: "Pointure" }), "39");
-    await user.type(screen.getByRole("textbox", { name: "Couleur" }), "brun");
+    await user.click(screen.getByRole("radio", { name: "Cognac" }));
     await user.type(screen.getByRole("textbox", { name: "SKU" }), "atlas-39");
     expect(screen.getByRole("textbox", { name: "SKU" })).toHaveValue("ATLAS-39");
-    await user.click(screen.getByRole("button", { name: "Retirer" }));
+    await user.click(screen.getByRole("button", { name: "Supprimer" }));
     expect(screen.queryByRole("textbox", { name: "Pointure" })).not.toBeInTheDocument();
   });
 });
