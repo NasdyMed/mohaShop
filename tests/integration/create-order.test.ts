@@ -17,7 +17,14 @@ function checkout(items: Array<{ variantId: string; quantity: number }>) {
     firstName: "  Amina   Zahra ",
     lastName: " El   Idrissi ",
     phone: "06 12 34 56 78",
+    email: "amina@example.com",
     address: "  12 rue   Atlas, Rabat  ",
+    addressComplement: "Appartement 4",
+    city: "Rabat",
+    region: "Rabat-Salé-Kénitra",
+    postalCode: "10000",
+    country: "Maroc",
+    deliveryNotes: "Appeler avant la livraison",
     items,
   };
 }
@@ -101,7 +108,14 @@ describe.sequential("createOrder PostgreSQL integration", () => {
       customerFirstName: "Amina Zahra",
       customerLastName: "El Idrissi",
       customerPhone: PHONE,
+      customerEmail: "amina@example.com",
       customerAddress: "12 rue Atlas, Rabat",
+      customerAddressComplement: "Appartement 4",
+      customerCity: "Rabat",
+      customerRegion: "Rabat-Salé-Kénitra",
+      customerPostalCode: "10000",
+      customerCountry: "Maroc",
+      deliveryNotes: "Appeler avant la livraison",
       totalDh: 1480,
     });
     expect(saved.items).toEqual([

@@ -10,7 +10,14 @@ const validCheckout = {
   firstName: "Amina",
   lastName: "El Mansouri",
   phone: "0612345678",
+  email: "",
   address: "12 rue Atlas, Rabat",
+  addressComplement: "",
+  city: "Rabat",
+  region: "Rabat-Salé-Kénitra",
+  postalCode: "",
+  country: "Maroc",
+  deliveryNotes: "",
   items: [{ variantId: "variant-1", quantity: 2 }],
 };
 
@@ -74,6 +81,10 @@ describe("checkoutSchema", () => {
       lastName: "El-Mansouri",
       phone: "+212612345678",
       address: "12 rue Atlas, Rabat",
+      email: undefined,
+      addressComplement: undefined,
+      postalCode: undefined,
+      deliveryNotes: undefined,
     });
     expect(parsed.phone).toMatch(/^\+212[67]\d{8}$/);
   });
@@ -218,7 +229,7 @@ describe("checkoutSchema", () => {
 
   it("rejects invalid phones and unexpected input fields with French errors", () => {
     const badPhone = checkoutSchema.safeParse({ ...validCheckout, phone: "+33612345678" });
-    const unexpected = checkoutSchema.safeParse({ ...validCheckout, email: "amina@example.com" });
+    const unexpected = checkoutSchema.safeParse({ ...validCheckout, totalDh: 100 });
 
     expect(badPhone.success).toBe(false);
     if (!badPhone.success) expect(badPhone.error.issues[0]?.message).toMatch(/téléphone/i);
@@ -237,5 +248,32 @@ describe("checkoutSchema", () => {
       message: "Champ non reconnu.",
       path: ["items", 0],
     });
+  });
+
+  it("validates and normalizes complete Moroccan delivery details", () => {
+    const result = checkoutSchema.parse({
+      ...validCheckout,
+      email: " AMINA@EXAMPLE.COM ",
+      addressComplement: "  Appartement 4, 2e étage ",
+      postalCode: "10000",
+      deliveryNotes: "  Appeler avant la livraison  ",
+    });
+
+    expect(result).toMatchObject({
+      email: "amina@example.com",
+      addressComplement: "Appartement 4, 2e étage",
+      city: "Rabat",
+      region: "Rabat-Salé-Kénitra",
+      postalCode: "10000",
+      country: "Maroc",
+      deliveryNotes: "Appeler avant la livraison",
+    });
+  });
+
+  it("requires city and region while keeping secondary delivery fields optional", () => {
+    expect(checkoutSchema.safeParse({ ...validCheckout, city: "" }).success).toBe(false);
+    expect(checkoutSchema.safeParse({ ...validCheckout, region: "" }).success).toBe(false);
+    expect(checkoutSchema.safeParse(validCheckout).success).toBe(true);
+    expect(checkoutSchema.safeParse({ ...validCheckout, email: "incorrect", postalCode: "12" }).success).toBe(false);
   });
 });

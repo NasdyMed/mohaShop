@@ -59,7 +59,14 @@ model Order {
   customerFirstName String
   customerLastName  String
   customerPhone     String
+  customerEmail     String?
   customerAddress   String
+  customerAddressComplement String?
+  customerCity      String
+  customerRegion    String
+  customerPostalCode String?
+  customerCountry   String      @default("Maroc")
+  deliveryNotes     String?
   totalDh           Int
   status            OrderStatus @default(NEW)
   stockRestored     Boolean     @default(false)

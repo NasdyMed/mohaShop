@@ -21,5 +21,5 @@ export async function listAdminOrders(input: { status?: string; q?: string; page
 }
 export async function getAdminOrder(id: string) {
   if (!id || id.length > 128) return null;
-  return db.order.findUnique({ where: { id }, select: { id: true, number: true, customerFirstName: true, customerLastName: true, customerPhone: true, customerAddress: true, totalDh: true, status: true, stockRestored: true, createdAt: true, updatedAt: true, items: { select: { id: true, productName: true, size: true, color: true, unitPriceDh: true, quantity: true } } } });
+  return db.order.findUnique({ where: { id }, select: { id: true, number: true, customerFirstName: true, customerLastName: true, customerPhone: true, customerEmail: true, customerAddress: true, customerAddressComplement: true, customerCity: true, customerRegion: true, customerPostalCode: true, customerCountry: true, deliveryNotes: true, totalDh: true, status: true, stockRestored: true, createdAt: true, updatedAt: true, items: { select: { id: true, productName: true, size: true, color: true, unitPriceDh: true, quantity: true } } } });
 }

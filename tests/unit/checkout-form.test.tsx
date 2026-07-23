@@ -37,6 +37,8 @@ async function fillValidForm() {
   await user.type(screen.getByLabelText("Nom"), "El Idrissi");
   await user.type(screen.getByLabelText("Téléphone"), "0612345678");
   await user.type(screen.getByLabelText("Adresse de livraison"), "12 rue des Fleurs, Rabat");
+  await user.type(screen.getByLabelText("Ville"), "Rabat");
+  await user.type(screen.getByLabelText("Région"), "Rabat-Salé-Kénitra");
   return user;
 }
 
@@ -74,6 +76,8 @@ describe("CheckoutForm", () => {
     expect(screen.getByText("Le nom doit contenir au moins 2 caractères.")).toBeInTheDocument();
     expect(screen.getByText("Le numéro de téléphone marocain est invalide.")).toBeInTheDocument();
     expect(screen.getByText("L’adresse doit contenir au moins 10 caractères.")).toBeInTheDocument();
+    expect(screen.getByText("La ville doit contenir au moins 2 caractères.")).toBeInTheDocument();
+    expect(screen.getByText("La région doit contenir au moins 2 caractères.")).toBeInTheDocument();
     expect(createOrderAction).not.toHaveBeenCalled();
   });
 
@@ -87,7 +91,14 @@ describe("CheckoutForm", () => {
       firstName: "Amine",
       lastName: "El Idrissi",
       phone: "0612345678",
+      email: "",
       address: "12 rue des Fleurs, Rabat",
+      addressComplement: "",
+      city: "Rabat",
+      region: "Rabat-Salé-Kénitra",
+      postalCode: "",
+      country: "Maroc",
+      deliveryNotes: "",
       items: [{ variantId: "variant-atlas-40", quantity: 2 }],
     }));
     expect(createOrderAction.mock.calls[0][0]).not.toHaveProperty("totalDh");
