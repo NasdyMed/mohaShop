@@ -21,4 +21,10 @@ describe("storefront touch targets", () => {
     expect(css).toMatch(/\.admin-login-card\s*\{[^}]*container-type:\s*inline-size;/s);
     expect(css).toMatch(/\.admin-login-card h1[^}]*font-size:\s*clamp\([^;]*cqi[^;]*\);[^}]*line-height:[^;]+;[^}]*overflow-wrap:\s*anywhere;/s);
   });
+
+  it("gives quick color and size choices a 44 pixel target", () => {
+    const css = read("app/globals.css");
+    expect(css).toMatch(/\.quick-color-option[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/s);
+    expect(css).toMatch(/\.quick-size-option[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/s);
+  });
 });
