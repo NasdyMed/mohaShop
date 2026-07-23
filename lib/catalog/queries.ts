@@ -10,12 +10,12 @@ export type CatalogProductCard = {
   name: string;
   priceDh: number;
   image: CatalogImage | null;
+  variants: CatalogVariant[];
   available: boolean;
 };
 export type CatalogProductDetail = CatalogProductCard & {
   description: string;
   images: CatalogImage[];
-  variants: CatalogVariant[];
 };
 
 export async function listVisibleProducts(): Promise<CatalogProductCard[]> {
@@ -28,14 +28,18 @@ export async function listVisibleProducts(): Promise<CatalogProductCard[]> {
       name: true,
       priceDh: true,
       images: { orderBy: { position: "asc" }, take: 1, select: { id: true, url: true, alt: true } },
-      variants: { where: { stock: { gt: 0 } }, take: 1, select: { id: true } },
+      variants: {
+        orderBy: [{ color: "asc" }, { size: "asc" }],
+        select: { id: true, sku: true, color: true, size: true, stock: true },
+      },
     },
   });
 
   return products.map(({ images, variants, ...product }) => ({
     ...product,
     image: images[0] ?? null,
-    available: variants.length > 0,
+    variants,
+    available: variants.some((variant) => variant.stock > 0),
   }));
 }
 

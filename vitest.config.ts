@@ -5,7 +5,10 @@ import path from "node:path";
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: { "@": path.resolve(__dirname, ".") },
+    alias: {
+      "@": path.resolve(__dirname, "."),
+      "server-only": path.resolve(__dirname, "tests/mocks/server-only.ts"),
+    },
   },
   test: {
     environment: "jsdom",
