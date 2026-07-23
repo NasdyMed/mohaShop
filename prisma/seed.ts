@@ -54,8 +54,14 @@ async function main() {
 
       for (const variant of demo.variants) {
         await tx.productVariant.upsert({
-          where: { sku: variant.sku },
-          update: { productId: product.id, size: variant.size, color: variant.color },
+          where: {
+            productId_size_color: {
+              productId: product.id,
+              size: variant.size,
+              color: variant.color,
+            },
+          },
+          update: { sku: variant.sku, stock: variant.stock },
           create: { productId: product.id, ...variant },
         });
       }

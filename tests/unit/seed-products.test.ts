@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { seedProducts } from "../../prisma/seed-products";
@@ -24,5 +26,12 @@ describe("catalog seed products", () => {
     expect(stocks).toContain(0);
     expect(stocks.some((stock) => stock > 0)).toBe(true);
     expect(seedProducts.some((product) => new Set(product.variants.map((variant) => variant.color)).size > 1)).toBe(true);
+  });
+
+  it("upserts variants by their product, size and color identity", () => {
+    const seedSource = readFileSync(join(process.cwd(), "prisma/seed.ts"), "utf8");
+
+    expect(seedSource).toContain("productId_size_color");
+    expect(seedSource).not.toMatch(/where:\s*\{\s*sku:\s*variant\.sku/);
   });
 });
