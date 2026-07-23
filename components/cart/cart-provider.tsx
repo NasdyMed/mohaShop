@@ -1,9 +1,10 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useReducer } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState } from "react";
 
 import { cartReducer, sanitizeCartItems, selectItemCount, selectTotal } from "./cart-reducer";
 import type { CartAction, CartItem } from "./cart-types";
+import { CartFeedback } from "./cart-feedback";
 
 const STORAGE_KEY = "boots-cart-v1";
 
@@ -13,6 +14,8 @@ type CartContextValue = {
   hydrated: boolean;
   itemCount: number;
   totalDh: number;
+  notice: { id: number; message: string } | null;
+  clearNotice: () => void;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -36,17 +39,29 @@ function readStoredCart(): CartItem[] {
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [{ items, hydrated }, dispatch] = useReducer(
+  const [{ items, hydrated }, reducerDispatch] = useReducer(
     (state: { items: CartItem[]; hydrated: boolean }, action: CartAction) => ({
       items: cartReducer(state.items, action),
       hydrated: state.hydrated || action.type === "hydrate",
     }),
     { items: [], hydrated: false },
   );
+  const [notice, setNotice] = useState<{ id: number; message: string } | null>(null);
+  const clearNotice = useCallback(() => setNotice(null), []);
+  const dispatch = useCallback<React.Dispatch<CartAction>>((action) => {
+    reducerDispatch(action);
+    if (action.type === "add") {
+      const quantity = Math.max(1, action.quantity);
+      setNotice({
+        id: Date.now(),
+        message: `${action.item.productName} a été ajouté au panier${quantity > 1 ? ` · ${quantity} articles` : ""}.`,
+      });
+    }
+  }, []);
 
   useEffect(() => {
-    dispatch({ type: "hydrate", items: readStoredCart() });
-  }, []);
+    reducerDispatch({ type: "hydrate", items: readStoredCart() });
+  }, [reducerDispatch]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -63,9 +78,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     hydrated,
     itemCount: selectItemCount(items),
     totalDh: selectTotal(items),
-  }), [hydrated, items]);
+    notice,
+    clearNotice,
+  }), [clearNotice, dispatch, hydrated, items, notice]);
 
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+  return <CartContext.Provider value={value}>{children}<CartFeedback clearNotice={clearNotice} hydrated={hydrated} itemCount={value.itemCount} notice={notice} /></CartContext.Provider>;
 }
 
 export function useCart() {

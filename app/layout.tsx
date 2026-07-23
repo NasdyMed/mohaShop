@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Providers } from "@/components/cart/providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -11,7 +10,7 @@ export const viewport: Viewport = { themeColor: "#f4efe6", width: "device-width"
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="fr">
-      <body><Providers>{children}</Providers></body>
+      <body>{children}</body>
     </html>
   );
 }

@@ -54,4 +54,29 @@ describe("CartProvider storage", () => {
 
     expect(screen.getByText("1:Nora")).toBeInTheDocument();
   });
+
+  it("shows global cart feedback and a floating cart shortcut after an addition", async () => {
+    render(<CartProvider><Probe /></CartProvider>);
+    await waitFor(() => expect(screen.getByText("0:vide")).toBeInTheDocument());
+
+    expect(screen.getByRole("link", { name: "Ouvrir le panier, 0 article" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Ajouter" }));
+
+    expect(screen.getByText("Nora a été ajouté au panier.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ouvrir le panier, 1 article" })).toBeInTheDocument();
+    expect(screen.getByText("1", { selector: ".floating-cart-count" })).toBeInTheDocument();
+  });
+
+  it("does not show an addition notification while hydrating a stored cart", async () => {
+    localStorage.setItem("boots-cart-v1", JSON.stringify([{
+      variantId: "v1", productSlug: "atlas", productName: "Atlas", imageUrl: null,
+      size: "40", color: "Brun", unitPriceDh: 899, availableStock: 3, quantity: 2,
+    }]));
+
+    render(<CartProvider><Probe /></CartProvider>);
+    await waitFor(() => expect(screen.getByText("2:Atlas")).toBeInTheDocument());
+
+    expect(screen.queryByText("Ajouté au panier")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ouvrir le panier, 2 articles" })).toBeInTheDocument();
+  });
 });
