@@ -32,7 +32,7 @@ export default async function CatalogPage() {
           <p>Filtres à venir</p>
         </aside>
         <div className="catalog-results">
-          {products.length > 0 ? <div className="product-grid">{products.map((product, index) => <ProductCard key={product.id} product={product} position={index + 1} />)}</div> : <div className="empty-state"><p className="eyebrow">La collection se prépare</p><h2>De nouvelles bottes arrivent bientôt.</h2><p>Revenez dans quelques jours pour découvrir nos prochains modèles.</p></div>}
+          {products.length > 0 ? <div className="product-grid">{products.map((product) => <ProductCard key={product.id} product={product} />)}</div> : <div className="empty-state"><p className="eyebrow">La collection se prépare</p><h2>De nouvelles bottes arrivent bientôt.</h2><p>Revenez dans quelques jours pour découvrir nos prochains modèles.</p></div>}
         </div>
       </div>
     </section>

@@ -49,6 +49,7 @@ describe("catalog layout", () => {
 
     expect(productLink.querySelector("button")).toBeNull();
     expect(await screen.findByRole("button", { name: "Choisir une taille" })).toBeInTheDocument();
+    expect(document.querySelector(".product-card-index")).toBeNull();
   });
 
   it("defines four, two and one-column responsive grids with dedicated product states", () => {
@@ -59,5 +60,7 @@ describe("catalog layout", () => {
     expect(css).toMatch(/@media\s*\(max-width:\s*760px\)[\s\S]*?\.product-grid\s*\{[^}]*grid-template-columns:\s*1fr/s);
     expect(css).toContain(".product-card-price");
     expect(css).toContain(".product-availability");
+    expect(css).toContain("#collection:target .product-card");
+    expect(css).toContain("@keyframes collection-reveal");
   });
 });
