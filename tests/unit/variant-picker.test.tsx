@@ -13,6 +13,15 @@ const variants = [
 afterEach(cleanup);
 
 describe("VariantPicker", () => {
+  it("selects the first available color and size by default", () => {
+    const onSelect = vi.fn<(variant: CatalogVariant | null) => void>();
+    render(<VariantPicker variants={variants} onSelect={onSelect} />);
+
+    expect(screen.getByRole("radio", { name: "Cognac" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "40" })).toBeChecked();
+    expect(onSelect).toHaveBeenLastCalledWith(variants[0]);
+  });
+
   it("selects an available variant and returns the typed variant", () => {
     const onSelect = vi.fn<(variant: CatalogVariant | null) => void>();
     render(<VariantPicker variants={variants} onSelect={onSelect} />);
@@ -27,10 +36,9 @@ describe("VariantPicker", () => {
   it("disables an unavailable combination and exposes its stock status", () => {
     render(<VariantPicker variants={variants} onSelect={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole("radio", { name: "Cognac" }));
-
     expect(screen.getByRole("radio", { name: "41 — Rupture de stock" })).toBeDisabled();
-    expect(screen.getByText("Choisissez maintenant une pointure.")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "40" })).toBeChecked();
+    expect(screen.getByText("Plus que 2 en stock")).toBeInTheDocument();
     expect(screen.getByText("Rupture de stock")).toBeInTheDocument();
   });
 
@@ -38,20 +46,17 @@ describe("VariantPicker", () => {
     const onSelect = vi.fn<(variant: CatalogVariant | null) => void>();
     render(<VariantPicker variants={variants} onSelect={onSelect} />);
 
-    expect(screen.getByRole("radio", { name: "40" })).toBeDisabled();
-    expect(screen.getByRole("radio", { name: "41" })).toBeDisabled();
-    expect(onSelect).not.toHaveBeenCalled();
+    expect(screen.getByRole("radio", { name: "40" })).toBeChecked();
+    expect(onSelect).toHaveBeenLastCalledWith(variants[0]);
 
     fireEvent.click(screen.getByRole("radio", { name: "Noir" }));
-    expect(screen.getByRole("radio", { name: "40" })).toBeDisabled();
-    expect(screen.getByRole("radio", { name: "41" })).toBeEnabled();
-
-    fireEvent.click(screen.getByRole("radio", { name: "41" }));
+    expect(screen.getByRole("radio", { name: "40 — Rupture de stock" })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "41" })).toBeChecked();
     expect(onSelect).toHaveBeenLastCalledWith(variants[2]);
 
     fireEvent.click(screen.getByRole("radio", { name: "Cognac" }));
-    expect(onSelect).toHaveBeenLastCalledWith(null);
-    expect(screen.getByRole("radio", { name: /41/ })).not.toBeChecked();
+    expect(onSelect).toHaveBeenLastCalledWith(variants[0]);
+    expect(screen.getByRole("radio", { name: "40" })).toBeChecked();
   });
 
   it("resets a selected variant when the available variants change", () => {
@@ -62,8 +67,9 @@ describe("VariantPicker", () => {
 
     rerender(<VariantPicker variants={[variants[0]]} onSelect={onSelect} />);
 
-    expect(onSelect).toHaveBeenLastCalledWith(null);
-    expect(screen.getByText("Choisissez une couleur et une pointure disponibles.")).toBeInTheDocument();
+    expect(onSelect).toHaveBeenLastCalledWith(variants[0]);
+    expect(screen.getByRole("radio", { name: "Cognac" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "40" })).toBeChecked();
   });
 
   it("supports keyboard selection through native radio controls", async () => {

@@ -14,10 +14,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   if (!product) notFound();
   return <main>
     <header className="site-header shell"><Link className="brand" href="/">Maison Botte</Link><nav className="header-nav" aria-label="Navigation principale"><Link href="/">← Collection</Link><CartLink /></nav></header>
-    <article className="product-detail shell"><ProductGallery images={product.images} productName={product.name} /><div className="product-info">
-      <p className="eyebrow">Botte signature</p><h1>{product.name}</h1><p className="detail-price">{formatPriceDh(product.priceDh)}</p><p className="description">{product.description}</p>
+    <article className="product-detail shell"><div className="product-gallery-column"><p className="product-detail-index">Collection · Maison Botte</p><ProductGallery images={product.images} productName={product.name} /></div><div className="product-info" aria-label={`Acheter ${product.name}`}>
+      <p className="eyebrow">Botte signature</p><h1>{product.name}</h1><div className="detail-price-row"><p className="detail-price">{formatPriceDh(product.priceDh)}</p><span>TVA incluse</span></div><p className="description">{product.description}</p>
       {product.available ? <ProductPurchase product={{ slug: product.slug, name: product.name, imageUrl: product.image?.url ?? null, unitPriceDh: product.priceDh }} variants={product.variants} /> : <p className="sold-out">Rupture de stock</p>}
-      <aside className="service-note"><strong>Paiement à la livraison</strong><span>Partout au Maroc, en toute simplicité.</span></aside>
+      <aside className="service-note"><div><span aria-hidden="true">✓</span><p><strong>Paiement à la livraison</strong><small>Réglez à la réception de votre commande.</small></p></div><div><span aria-hidden="true">→</span><p><strong>Livraison partout au Maroc</strong><small>Sans création de compte.</small></p></div></aside>
     </div></article>
   </main>;
 }

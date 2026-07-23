@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
     slug: "bottine-atlas",
     name: "Bottine Atlas",
     priceDh: 1290,
-    image: null,
+    image: { id: "image-1", url: "/atlas.jpg", alt: "Bottine Atlas" },
     available: true,
     variants: [{ id: "v1", sku: "ATLAS-40", color: "Cognac", size: "40", stock: 3 }],
   }],
@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/catalog/queries", () => ({ listVisibleProducts: vi.fn().mockResolvedValue(mocks.products) }));
 vi.mock("@/components/cart/cart-link", () => ({ CartLink: () => <a href="/panier">Panier</a> }));
-vi.mock("next/image", () => ({ default: () => null }));
+vi.mock("next/image", () => ({ default: ({ alt }: { alt: string }) => <span role="img" aria-label={alt} /> }));
 
 import CatalogPage from "@/app/(shop)/page";
 import { CartProvider } from "@/components/cart/cart-provider";
@@ -25,6 +25,16 @@ import { CartProvider } from "@/components/cart/cart-provider";
 afterEach(cleanup);
 
 describe("catalog layout", () => {
+  it("presents the editorial hero and the three buying guarantees", async () => {
+    render(<CartProvider>{await CatalogPage()}</CartProvider>);
+
+    expect(screen.getByRole("link", { name: /Découvrir la collection/ })).toHaveAttribute("href", "#collection");
+    expect(screen.getByRole("img", { name: "Bottine Atlas, sélection Maison Botte" })).toBeInTheDocument();
+    expect(screen.getByText("Paiement à la livraison")).toBeInTheDocument();
+    expect(screen.getByText("Livraison partout au Maroc")).toBeInTheDocument();
+    expect(screen.getByText("Commande sans compte")).toBeInTheDocument();
+  });
+
   it("places an empty filter area before compact product results", async () => {
     render(<CartProvider>{await CatalogPage()}</CartProvider>);
 
