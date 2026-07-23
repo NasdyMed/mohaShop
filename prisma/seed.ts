@@ -5,6 +5,8 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
+import { seedProducts } from "./seed-products";
+
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   ADMIN_EMAIL: z.email(),
@@ -16,35 +18,6 @@ const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: env.DATABASE_URL }),
 });
 
-const products = [
-  {
-    slug: "bottine-atlas-cognac",
-    name: "Bottine Atlas",
-    description: "Une bottine en cuir cognac aux lignes sobres, pensée pour le quotidien.",
-    priceDh: 1290,
-    imageId: "demo-image-bottine-atlas-cognac",
-    image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1200&q=80",
-    variants: [
-      { sku: "ATLAS-COGNAC-40", size: "40", color: "Cognac", stock: 8 },
-      { sku: "ATLAS-COGNAC-41", size: "41", color: "Cognac", stock: 10 },
-      { sku: "ATLAS-COGNAC-42", size: "42", color: "Cognac", stock: 7 },
-    ],
-  },
-  {
-    slug: "chelsea-nocturne-noir",
-    name: "Chelsea Nocturne",
-    description: "Une Chelsea noire élégante, avec une silhouette nette et intemporelle.",
-    priceDh: 1450,
-    imageId: "demo-image-chelsea-nocturne-noir",
-    image: "https://images.unsplash.com/photo-1608256246200-53e635b5b65f?auto=format&fit=crop&w=1200&q=80",
-    variants: [
-      { sku: "NOCTURNE-NOIR-39", size: "39", color: "Noir", stock: 6 },
-      { sku: "NOCTURNE-NOIR-40", size: "40", color: "Noir", stock: 9 },
-      { sku: "NOCTURNE-NOIR-41", size: "41", color: "Noir", stock: 8 },
-    ],
-  },
-] as const;
-
 async function main() {
   const passwordHash = await bcrypt.hash(env.ADMIN_PASSWORD, 12);
 
@@ -54,7 +27,7 @@ async function main() {
     create: { email: env.ADMIN_EMAIL.toLowerCase(), passwordHash },
   });
 
-  for (const demo of products) {
+  for (const demo of seedProducts) {
     await prisma.$transaction(async (tx) => {
       const product = await tx.product.upsert({
         where: { slug: demo.slug },
