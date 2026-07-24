@@ -20,7 +20,7 @@ const validDraft = {
   priceDh: 850,
   slug: "botte-atlas",
   isVisible: false,
-  images: [{ url: "https://example.com/atlas.webp", alt: "Botte Atlas noire", color: null, position: 0 }],
+  images: [{ url: "https://example.com/atlas.webp", alt: "Botte Atlas noire", color: "Noir", position: 0 }],
   variants: [{ sku: "ATLAS-38", size: "38", color: "Noir", stock: 3 }],
 };
 
@@ -85,8 +85,9 @@ describe("ProductForm", () => {
     ]);
     expect(await screen.findByRole("link", { name: "Ouvrir l’image 1" })).toBeVisible();
     expect(mocks.upload).toHaveBeenCalledTimes(2);
-    await user.click(screen.getAllByRole("radio", { name: "Noir" })[0]);
-    expect(screen.getAllByRole("radio", { name: "Noir" })[0]).toBeChecked();
+    const images = screen.getByRole("region", { name: "Images du produit" });
+    expect(within(images).getAllByRole("radio", { name: "Noir" })).toHaveLength(2);
+    expect(within(images).getAllByRole("radio", { name: "Noir" }).every((radio) => radio.hasAttribute("checked"))).toBe(true);
   });
 });
 

@@ -4,7 +4,7 @@ import { productInputSchema } from "@/lib/validation/product";
 const valid = {
   name: "  Bottes Atlas  ", description: "Une botte solide pour toutes les aventures.", priceDh: 899,
   slug: "bottes-atlas", isVisible: true,
-  images: [{ url: "https://images.unsplash.com/boot.webp", alt: "Botte Atlas", position: 0, color: null }],
+  images: [{ url: "https://images.unsplash.com/boot.webp", alt: "Botte Atlas", position: 0, color: "Noir" }],
   variants: [{ sku: " atlas-38-noir ", size: "38", color: "Noir", stock: 4 }],
 };
 
@@ -48,9 +48,9 @@ describe("productInputSchema", () => {
       expect.objectContaining({ path: ["images", 1, "id"] }), expect.objectContaining({ path: ["variants", 1, "id"] }),
     ]));
   });
-  it("accepts general or known-color images and rejects an unknown color", () => {
+  it("requires a known variant color for every image", () => {
     expect(productInputSchema.safeParse(valid).success).toBe(true);
-    expect(productInputSchema.safeParse({ ...valid, images: [{ ...valid.images[0], color: "Noir" }] }).success).toBe(true);
+    expect(productInputSchema.safeParse({ ...valid, images: [{ ...valid.images[0], color: null }] }).success).toBe(false);
     const result = productInputSchema.safeParse({ ...valid, images: [{ ...valid.images[0], color: "Rose" }] });
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error.issues[0].path).toEqual(["images", 0, "color"]);

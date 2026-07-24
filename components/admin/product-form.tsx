@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { saveProductAction } from "@/app/actions/save-product";
 import { uploadProductImageAction } from "@/app/actions/upload-product-image";
 import { LoadingLabel } from "@/components/ui/loading-label";
-import { colorSwatch, normalizeProductColor } from "@/lib/catalog/color-swatches";
+import { colorSwatch, normalizeProductColor, productColorOptions } from "@/lib/catalog/color-swatches";
 import { EditableVariant, VariantEditor } from "./variant-editor";
 
 type EditableImage = { id?: string; url: string; alt: string; color?: string | null; position: number };
@@ -27,7 +27,9 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
   const router = useRouter();
   const [value, setValue] = useState<Value>(() => {
     const initial = initialValue ?? empty;
-    return { ...initial, images: initial.images.map((image) => ({ ...image, color: image.color ?? null })), variants: initial.variants.map((variant) => ({ ...variant, color: normalizeProductColor(variant.color) })) };
+    const variants = initial.variants.map((variant) => ({ ...variant, color: normalizeProductColor(variant.color) }));
+    const firstColor = variants[0]?.color ?? null;
+    return { ...initial, images: initial.images.map((image) => ({ ...image, color: image.color ?? firstColor })), variants };
   });
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -59,7 +61,7 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
         data.set("file", file);
         const result = await uploadProductImageAction(data);
         if (!result.ok) { setMessage(result.message); continue; }
-        added.push({ url: result.url, alt: `${value.name || "Produit"} — ${file.name.replace(/\.[^.]+$/, "")}`, color: null, position: value.images.length + added.length });
+        added.push({ url: result.url, alt: `${value.name || "Produit"} — ${file.name.replace(/\.[^.]+$/, "")}`, color: colors[0] ?? null, position: value.images.length + added.length });
       }
       if (added.length) setValue((current) => ({ ...current, images: [...current.images, ...added].map((image, position) => ({ ...image, position })) }));
     } catch {
@@ -111,13 +113,19 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
       {!canPublish && <p className="admin-inline-note">Ajoutez une image et une déclinaison pour publier. Le brouillon reste enregistrable.</p>}
     </section>
 
+    <VariantEditor value={value.variants} onChange={(variants) => {
+      const availableColors = new Set(variants.map((variant) => variant.color));
+      const fallbackColor = variants[0]?.color ?? null;
+      setValue({ ...value, variants, images: value.images.map((image) => ({ ...image, color: image.color && availableColors.has(image.color) ? image.color : fallbackColor })), isVisible: value.isVisible && variants.length > 0 && value.images.length > 0 });
+    }} disabled={busy} errors={errors}/>
+
     <section className="admin-form-card" aria-labelledby="product-images-title">
-      <div className="admin-section-heading"><div><span className="admin-section-index">02</span><h2 id="product-images-title">Images</h2></div><p>La première image devient la couverture du produit.</p></div>
+      <div className="admin-section-heading"><div><span className="admin-section-index">03</span><h2 id="product-images-title">Images</h2></div><p>La première image devient la couverture du produit.</p></div>
       <FieldError errors={errors.images}/>
       <div className="admin-upload-state">
         <input ref={fileInput} className="visually-hidden" aria-label="Téléverser des images" type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={busy || uploading || value.images.length >= 10} onChange={uploadImages}/>
         <button className="admin-outline-button" type="button" disabled={busy || uploading || value.images.length >= 10} onClick={() => fileInput.current?.click()}>{uploading ? <LoadingLabel>Import en cours…</LoadingLabel> : <><span aria-hidden="true">＋</span> Ajouter des images</>}</button>
-        <p><strong>JPEG, PNG ou WebP · 5 Mio maximum.</strong> Jusqu’à 10 visuels, généraux ou associés à une couleur.</p>
+        <p><strong>JPEG, PNG ou WebP · 5 Mio maximum.</strong> Jusqu’à 10 visuels associés aux couleurs du produit.</p>
       </div>
       {value.images.length === 0 ? <div className="admin-image-empty"><span aria-hidden="true">◇</span><strong>Aucune image</strong><p>Importez un premier visuel pour préparer la fiche produit.</p></div> :
         <div className="admin-image-gallery" role="region" aria-label="Images du produit">
@@ -127,10 +135,13 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
             </a>
             <div className="admin-image-card-body">
               <label>Texte alternatif<input disabled={busy} required minLength={2} maxLength={160} aria-invalid={!!errors[`images.${index}.alt`]} aria-describedby={errors[`images.${index}.alt`] ? `product-image-${index}-alt-error` : undefined} value={image.alt} onChange={(event) => setValue({ ...value, images: value.images.map((item, current) => current === index ? { ...item, alt: event.target.value } : item) })}/></label>
-              <fieldset className="admin-image-color-picker"><legend>Visuel pour <strong>{image.color ?? "Toutes les couleurs"}</strong></legend><div className="admin-image-color-options">
-                <label className="admin-color-option is-general" title="Toutes les couleurs"><input type="radio" name={`image-color-${index}`} aria-label="Toutes les couleurs" checked={image.color == null} disabled={busy} onChange={() => setValue({ ...value, images: value.images.map((item, current) => current === index ? { ...item, color: null } : item) })}/><span aria-hidden="true">Toutes</span></label>
-                {colors.map((color) => <label className="admin-color-option" title={color} key={color}><input type="radio" name={`image-color-${index}`} aria-label={color} checked={image.color === color} disabled={busy} onChange={() => setValue({ ...value, images: value.images.map((item, current) => current === index ? { ...item, color } : item) })}/><span style={{ backgroundColor: colorSwatch(color).background }} aria-hidden="true"/></label>)}
+              <fieldset className="admin-image-color-picker"><legend>Visuel pour <strong>{image.color ?? "Aucune couleur"}</strong></legend><div className="admin-image-color-options">
+                {productColorOptions.map((color) => {
+                  const available = colors.includes(color);
+                  return <label className={`admin-color-option${available ? "" : " is-disabled"}`} title={available ? color : `${color} — ajoutez cette déclinaison`} key={color}><input type="radio" name={`image-color-${index}`} aria-label={color} checked={image.color === color} disabled={busy || !available} onChange={() => setValue({ ...value, images: value.images.map((item, current) => current === index ? { ...item, color } : item) })}/><span style={{ backgroundColor: colorSwatch(color).background }} aria-hidden="true"/></label>;
+                })}
               </div></fieldset>
+              {colors.length === 0 && <p className="admin-inline-note">Ajoutez d’abord une déclinaison pour associer les images.</p>}
               <FieldError id={`product-image-${index}-alt-error`} errors={errors[`images.${index}.alt`]}/><FieldError errors={errors[`images.${index}.url`]}/><FieldError errors={errors[`images.${index}.position`]}/><FieldError errors={errors[`images.${index}.id`]}/>
               <div className="admin-image-actions">
                 <button className="admin-icon-button" aria-label={`Déplacer l’image ${index + 1} vers le haut`} title="Monter" disabled={busy || index === 0} type="button" onClick={() => move(index, -1)}><ArrowIcon direction="up"/></button>
@@ -141,7 +152,6 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
           </article>)}
         </div>}
     </section>
-    <VariantEditor value={value.variants} onChange={(variants) => setValue({ ...value, variants, isVisible: value.isVisible && variants.length > 0 && value.images.length > 0 })} disabled={busy} errors={errors}/>
     <div className="admin-form-actions"><p>{value.isVisible ? "Les modifications seront visibles immédiatement." : "Ce produit sera enregistré en brouillon."}</p><button className="admin-submit" disabled={busy}>{busy ? <LoadingLabel>Enregistrement…</LoadingLabel> : "Enregistrer le produit"}</button></div>
   </form>;
 }

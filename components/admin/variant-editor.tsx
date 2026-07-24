@@ -12,7 +12,7 @@ export function VariantEditor({ value, onChange, disabled, errors = {} }: { valu
     <legend>Déclinaisons</legend>
     <FieldError errors={errors.variants}/>
     <div className="admin-section-heading">
-      <div><span className="admin-section-index">03</span><h2>Tailles et couleurs</h2></div>
+      <div><span className="admin-section-index">02</span><h2>Tailles et couleurs</h2></div>
       <p>Créez une ligne par combinaison disponible.</p>
     </div>
     {value.map((variant, index) => <div className="variant-row" key={variant.id ?? index}>

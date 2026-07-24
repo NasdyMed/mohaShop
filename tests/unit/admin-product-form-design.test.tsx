@@ -28,6 +28,27 @@ afterEach(() => {
 });
 
 describe("Impeccable admin product form", () => {
+  it("place les déclinaisons avant les images avec une numérotation cohérente", () => {
+    const { container } = render(<ProductForm initialValue={product} />);
+    const headings = [...container.querySelectorAll(".admin-section-heading h2")].map((heading) => heading.textContent);
+    const indices = [...container.querySelectorAll(".admin-section-index")].map((index) => index.textContent);
+
+    expect(headings).toEqual(["Informations", "Tailles et couleurs", "Images"]);
+    expect(indices).toEqual(["01", "02", "03"]);
+  });
+
+  it("affiche toute la palette sur une image et désactive les couleurs sans déclinaison", () => {
+    render(<ProductForm initialValue={product} />);
+    const firstCard = within(screen.getByRole("region", { name: "Images du produit" })).getAllByRole("article")[0];
+    const picker = within(firstCard).getByRole("group", { name: /visuel pour/i });
+
+    expect(within(picker).queryByRole("radio", { name: "Toutes les couleurs" })).not.toBeInTheDocument();
+    expect(within(picker).getAllByRole("radio")).toHaveLength(8);
+    expect(within(picker).getByRole("radio", { name: "Noir" })).toBeChecked();
+    expect(within(picker).getByRole("radio", { name: "Noir" })).toBeEnabled();
+    expect(within(picker).getByRole("radio", { name: "Cognac" })).toBeDisabled();
+  });
+
   it("présente l’upload comme indisponible tant que Vercel Blob n’est pas configuré", () => {
     render(<ProductForm />);
 

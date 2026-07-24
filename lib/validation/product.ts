@@ -14,7 +14,7 @@ const imageSchema = z.object({
     } catch { return false; }
   }, "L’image doit utiliser un hébergeur autorisé en HTTPS."),
   alt: clean(2, 160, "Le texte alternatif"),
-  color: clean(1, 60, "La couleur").nullable().default(null),
+  color: clean(1, 60, "La couleur"),
   position: z.number().int().min(0).max(9),
 }).strict();
 
