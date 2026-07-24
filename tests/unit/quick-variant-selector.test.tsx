@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CartProvider, useCart } from "@/components/cart/cart-provider";
 import { QuickVariantSelector } from "@/components/shop/quick-variant-selector";
@@ -23,10 +23,10 @@ function CartProbe() {
   return <output data-testid="cart-probe">{hydrated ? JSON.stringify(items) : "loading"}</output>;
 }
 
-function renderSelector(items = variants) {
+function renderSelector(items = variants, onColorChange = vi.fn()) {
   return render(
     <CartProvider>
-      <QuickVariantSelector product={product} variants={items} />
+      <QuickVariantSelector product={product} variants={items} onColorChange={onColorChange} />
       <CartProbe />
     </CartProvider>,
   );
@@ -38,6 +38,8 @@ afterEach(cleanup);
 describe("QuickVariantSelector", () => {
   it("shows sold-out colors and sizes but prevents their selection", async () => {
     renderSelector();
+    expect(screen.getByRole("radio", { name: "Cognac" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Noir — épuisée" })).toBeDisabled();
     const open = screen.getByRole("button", { name: "Choisir une taille" });
     await waitFor(() => expect(open).toBeEnabled());
     fireEvent.click(open);
@@ -46,6 +48,17 @@ describe("QuickVariantSelector", () => {
     expect(screen.getByRole("radio", { name: "Noir — épuisée" })).toBeDisabled();
     expect(screen.getByRole("radio", { name: "Pointure 42 — épuisée" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Ajouter au panier" })).toBeDisabled();
+  });
+
+  it("notifies the card when an available color is selected", () => {
+    const onColorChange = vi.fn();
+    renderSelector([
+      variants[0],
+      { id: "beige-40", sku: "ATLAS-B-40", color: "Beige", size: "40", stock: 2 },
+    ], onColorChange);
+
+    fireEvent.click(screen.getByRole("radio", { name: "Beige" }));
+    expect(onColorChange).toHaveBeenLastCalledWith("Beige");
   });
 
   it("adds the exact selected color and size with quantity one", async () => {

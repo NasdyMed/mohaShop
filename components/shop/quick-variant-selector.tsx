@@ -14,9 +14,10 @@ type QuickVariantSelectorProps = {
     unitPriceDh: number;
   };
   variants: CatalogVariant[];
+  onColorChange?: (color: string) => void;
 };
 
-export function QuickVariantSelector({ product, variants }: QuickVariantSelectorProps) {
+export function QuickVariantSelector({ product, variants, onColorChange }: QuickVariantSelectorProps) {
   const { dispatch, hydrated } = useCart();
   const groups = useMemo(() => {
     const byColor = new Map<string, CatalogVariant[]>();
@@ -40,12 +41,11 @@ export function QuickVariantSelector({ product, variants }: QuickVariantSelector
   const selectedVariant = activeGroup?.variants.find((variant) => variant.id === selectedVariantId);
   const available = groups.some((group) => group.available);
 
-  if (!available) return <p className="quick-sold-out">Rupture de stock</p>;
-
   function chooseColor(color: string) {
     setSelectedColor(color);
     setSelectedVariantId("");
     setMessage("");
+    onColorChange?.(color);
   }
 
   function addSelected() {
@@ -65,10 +65,6 @@ export function QuickVariantSelector({ product, variants }: QuickVariantSelector
       quantity: 1,
     });
     setMessage(`${product.name}, taille ${selectedVariant.size}, ajouté au panier.`);
-  }
-
-  if (!open) {
-    return <button className="quick-open" type="button" disabled={!hydrated} onClick={() => setOpen(true)}>Choisir une taille</button>;
   }
 
   return (
@@ -98,7 +94,9 @@ export function QuickVariantSelector({ product, variants }: QuickVariantSelector
         </div>
       </fieldset>
 
-      <fieldset className="quick-size-fieldset">
+      {!available ? <p className="quick-sold-out">Rupture de stock</p> : !open ? (
+        <button className="quick-open" type="button" disabled={!hydrated} onClick={() => setOpen(true)}>Choisir une taille</button>
+      ) : <><fieldset className="quick-size-fieldset">
         <legend>Pointure</legend>
         <div className="quick-size-options">
           {activeGroup?.variants.map((variant) => {
@@ -121,9 +119,8 @@ export function QuickVariantSelector({ product, variants }: QuickVariantSelector
           })}
         </div>
       </fieldset>
-
       <button className="quick-add" type="button" disabled={!hydrated || !selectedVariant} onClick={addSelected}>Ajouter au panier</button>
-      <p className="quick-confirmation" role="status" aria-live="polite">{message}</p>
+      <p className="quick-confirmation" role="status" aria-live="polite">{message}</p></>}
     </div>
   );
 }

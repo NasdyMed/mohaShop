@@ -19,7 +19,10 @@ describe("listVisibleProducts", () => {
         slug: "atlas",
         name: "Atlas",
         priceDh: 899,
-        images: [{ id: "image-1", url: "https://example.com/atlas.webp", alt: "Atlas" }],
+        images: [
+          { id: "image-1", url: "https://example.com/atlas.webp", alt: "Atlas", color: "Cognac" },
+          { id: "image-2", url: "https://example.com/atlas-noir.webp", alt: "Atlas noir", color: "Noir" },
+        ],
         variants: [
           { id: "v1", sku: "ATLAS-40", color: "Cognac", size: "40", stock: 3 },
           { id: "v2", sku: "ATLAS-42", color: "Cognac", size: "42", stock: 0 },
@@ -38,6 +41,7 @@ describe("listVisibleProducts", () => {
       }),
     }));
     expect(result[0].variants).toHaveLength(2);
+    expect(result[0].images).toHaveLength(2);
     expect(result[0].available).toBe(true);
   });
 
@@ -54,7 +58,7 @@ describe("listVisibleProducts", () => {
     ]);
 
     await expect(listVisibleProducts()).resolves.toMatchObject([
-      { image: null, available: false, variants: [{ id: "v3", stock: 0 }] },
+      { image: null, images: [], available: false, variants: [{ id: "v3", stock: 0 }] },
     ]);
   });
 });

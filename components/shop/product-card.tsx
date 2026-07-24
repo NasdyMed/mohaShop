@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 
 import type { CatalogProductCard } from "@/lib/catalog/queries";
 import { QuickVariantSelector } from "./quick-variant-selector";
@@ -11,6 +14,12 @@ export function formatPriceDh(priceDh: number) {
 }
 
 export function ProductCard({ product }: { product: CatalogProductCard }) {
+  const firstColor = product.variants.find((variant) => variant.stock > 0)?.color ?? product.variants[0]?.color ?? null;
+  const [selectedColor, setSelectedColor] = useState<string | null>(firstColor);
+  const currentImage = product.images.find((image) => image.color === selectedColor)
+    ?? product.images.find((image) => image.color === null)
+    ?? product.image;
+
   return (
     <article className="product-card">
       <Link className="product-card-media-link" href={`/produits/${product.slug}`} aria-label={`Découvrir ${product.name}`}>
@@ -18,8 +27,8 @@ export function ProductCard({ product }: { product: CatalogProductCard }) {
           <span className={`product-card-stock ${product.available ? "is-available" : "is-unavailable"}`}>
             {product.available ? "En stock" : "Épuisé"}
           </span>
-          {product.image ? (
-            <Image src={product.image.url} alt={product.image.alt} fill sizes="(max-width: 760px) 100vw, (max-width: 1099px) 50vw, 25vw" />
+          {currentImage ? (
+            <Image key={currentImage.id} src={currentImage.url} alt={currentImage.alt} fill sizes="(max-width: 760px) 100vw, (max-width: 1099px) 50vw, 25vw" />
           ) : (
             <div className="image-fallback" role="img" aria-label={`Aperçu indisponible pour ${product.name}`}>
               BB
@@ -34,10 +43,11 @@ export function ProductCard({ product }: { product: CatalogProductCard }) {
           product={{
             slug: product.slug,
             name: product.name,
-            imageUrl: product.image?.url ?? null,
+            imageUrl: currentImage?.url ?? null,
             unitPriceDh: product.priceDh,
           }}
           variants={product.variants}
+          onColorChange={setSelectedColor}
         />
       </div>
     </article>

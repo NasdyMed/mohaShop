@@ -1,4 +1,7 @@
+"use client";
+
 import Image from "next/image";
+import { useState } from "react";
 
 import type { CatalogImage } from "@/lib/catalog/queries";
 
@@ -11,17 +14,23 @@ export function selectProductImages(images: CatalogImage[], selectedColor: strin
 
 export function ProductGallery({ images, productName, selectedColor = null }: { images: CatalogImage[]; productName: string; selectedColor?: string | null }) {
   const visibleImages = selectProductImages(images, selectedColor);
+  const [activeId, setActiveId] = useState<string | null>(() => visibleImages[0]?.id ?? null);
+  const activeImage = visibleImages.find((image) => image.id === activeId) ?? visibleImages[0];
+
   if (visibleImages.length === 0) {
     return <div className="gallery-fallback" role="img" aria-label={`Aperçu indisponible pour ${productName}`}>BB</div>;
   }
 
   return (
-    <section className="product-gallery" aria-label="Galerie du produit">
-      {visibleImages.map((image, index) => (
-        <figure className={index === 0 ? "gallery-main" : "gallery-secondary"} key={image.id}>
-          <Image src={image.url} alt={image.alt} fill priority={index === 0} sizes="(max-width: 900px) 100vw, 55vw" />
-        </figure>
-      ))}
+    <section className={`product-gallery${visibleImages.length > 1 ? " has-thumbnails" : ""}`} aria-label="Galerie du produit">
+      {visibleImages.length > 1 && <div className="gallery-thumbnails" aria-label="Autres vues du produit">
+        {visibleImages.map((image) => <button type="button" className="gallery-thumbnail" aria-label={`Afficher ${image.alt}`} aria-pressed={image.id === activeImage?.id} onClick={() => setActiveId(image.id)} key={image.id}>
+          <Image src={image.url} alt="" fill sizes="80px"/>
+        </button>)}
+      </div>}
+      <figure className="gallery-stage">
+        {activeImage && <Image key={activeImage.id} src={activeImage.url} alt={activeImage.alt} fill priority sizes="(max-width: 900px) 100vw, 55vw" />}
+      </figure>
     </section>
   );
 }

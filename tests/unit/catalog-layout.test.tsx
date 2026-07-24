@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -10,14 +10,21 @@ const mocks = vi.hoisted(() => ({
     name: "Bottine Atlas",
     priceDh: 1290,
     image: { id: "image-1", url: "/atlas.jpg", alt: "Bottine Atlas" },
+    images: [
+      { id: "image-1", url: "/atlas.jpg", alt: "Bottine Atlas", color: "Cognac" },
+      { id: "image-2", url: "/atlas-noir.jpg", alt: "Bottine Atlas noire", color: "Noir" },
+    ],
     available: true,
-    variants: [{ id: "v1", sku: "ATLAS-40", color: "Cognac", size: "40", stock: 3 }],
+    variants: [
+      { id: "v1", sku: "ATLAS-40", color: "Cognac", size: "40", stock: 3 },
+      { id: "v2", sku: "ATLAS-N-40", color: "Noir", size: "40", stock: 2 },
+    ],
   }],
 }));
 
 vi.mock("@/lib/catalog/queries", () => ({ listVisibleProducts: vi.fn().mockResolvedValue(mocks.products) }));
 vi.mock("@/components/cart/cart-link", () => ({ CartLink: () => <a href="/panier">Panier</a> }));
-vi.mock("next/image", () => ({ default: ({ alt }: { alt: string }) => <span role="img" aria-label={alt} /> }));
+vi.mock("next/image", () => ({ default: ({ alt, src }: { alt: string; src: string }) => <span role="img" aria-label={alt} data-src={src} /> }));
 
 import CatalogPage from "@/app/(shop)/page";
 import { CartProvider } from "@/components/cart/cart-provider";
@@ -50,6 +57,14 @@ describe("catalog layout", () => {
     expect(productLink.querySelector("button")).toBeNull();
     expect(await screen.findByRole("button", { name: "Choisir une taille" })).toBeInTheDocument();
     expect(document.querySelector(".product-card-index")).toBeNull();
+  });
+
+  it("changes the card image when another available color is selected", async () => {
+    render(<CartProvider>{await CatalogPage()}</CartProvider>);
+
+    expect(screen.getByRole("img", { name: "Bottine Atlas" })).toHaveAttribute("data-src", "/atlas.jpg");
+    fireEvent.click(screen.getByRole("radio", { name: "Noir" }));
+    expect(screen.getByRole("img", { name: "Bottine Atlas noire" })).toHaveAttribute("data-src", "/atlas-noir.jpg");
   });
 
   it("defines four, two and one-column responsive grids with dedicated product states", () => {

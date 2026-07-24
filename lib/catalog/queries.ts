@@ -10,6 +10,7 @@ export type CatalogProductCard = {
   name: string;
   priceDh: number;
   image: CatalogImage | null;
+  images: CatalogImage[];
   variants: CatalogVariant[];
   available: boolean;
 };
@@ -40,6 +41,7 @@ export async function listVisibleProducts(): Promise<CatalogProductCard[]> {
     return {
       ...product,
       image: images.find((image) => image.color === firstColor) ?? images.find((image) => image.color === null) ?? images[0] ?? null,
+      images,
       variants,
       available: variants.some((variant) => variant.stock > 0),
     };
