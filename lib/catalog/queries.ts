@@ -2,7 +2,7 @@ import "server-only";
 
 import { db } from "@/lib/db";
 
-export type CatalogImage = { id: string; url: string; alt: string };
+export type CatalogImage = { id: string; url: string; alt: string; color: string | null };
 export type CatalogVariant = { id: string; sku: string; color: string; size: string; stock: number };
 export type CatalogProductCard = {
   id: string;
@@ -27,7 +27,7 @@ export async function listVisibleProducts(): Promise<CatalogProductCard[]> {
       slug: true,
       name: true,
       priceDh: true,
-      images: { orderBy: { position: "asc" }, take: 1, select: { id: true, url: true, alt: true } },
+      images: { orderBy: { position: "asc" }, select: { id: true, url: true, alt: true, color: true } },
       variants: {
         orderBy: [{ color: "asc" }, { size: "asc" }],
         select: { id: true, sku: true, color: true, size: true, stock: true },
@@ -35,12 +35,15 @@ export async function listVisibleProducts(): Promise<CatalogProductCard[]> {
     },
   });
 
-  return products.map(({ images, variants, ...product }) => ({
-    ...product,
-    image: images[0] ?? null,
-    variants,
-    available: variants.some((variant) => variant.stock > 0),
-  }));
+  return products.map(({ images, variants, ...product }) => {
+    const firstColor = variants.find((variant) => variant.stock > 0)?.color;
+    return {
+      ...product,
+      image: images.find((image) => image.color === firstColor) ?? images.find((image) => image.color === null) ?? images[0] ?? null,
+      variants,
+      available: variants.some((variant) => variant.stock > 0),
+    };
+  });
 }
 
 export async function getVisibleProduct(slug: string): Promise<CatalogProductDetail | null> {
@@ -52,7 +55,7 @@ export async function getVisibleProduct(slug: string): Promise<CatalogProductDet
       name: true,
       description: true,
       priceDh: true,
-      images: { orderBy: { position: "asc" }, select: { id: true, url: true, alt: true } },
+      images: { orderBy: { position: "asc" }, select: { id: true, url: true, alt: true, color: true } },
       variants: {
         orderBy: [{ color: "asc" }, { size: "asc" }],
         select: { id: true, sku: true, color: true, size: true, stock: true },
@@ -61,9 +64,10 @@ export async function getVisibleProduct(slug: string): Promise<CatalogProductDet
   });
 
   if (!product) return null;
+  const firstColor = product.variants.find((variant) => variant.stock > 0)?.color;
   return {
     ...product,
-    image: product.images[0] ?? null,
+    image: product.images.find((image) => image.color === firstColor) ?? product.images.find((image) => image.color === null) ?? product.images[0] ?? null,
     available: product.variants.some((variant) => variant.stock > 0),
   };
 }

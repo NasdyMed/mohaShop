@@ -20,7 +20,7 @@ const validDraft = {
   priceDh: 850,
   slug: "botte-atlas",
   isVisible: false,
-  images: [{ url: "https://example.com/atlas.webp", alt: "Botte Atlas noire", position: 0 }],
+  images: [{ url: "https://example.com/atlas.webp", alt: "Botte Atlas noire", color: null, position: 0 }],
   variants: [{ sku: "ATLAS-38", size: "38", color: "Noir", stock: 3 }],
 };
 
@@ -72,6 +72,21 @@ describe("ProductForm", () => {
     expect(mocks.push).toHaveBeenCalledWith("/admin/produits/cm12345678901234567890123");
     await user.click(within(screen.getByRole("heading", { name: "Images" }).closest("section")!).getByRole("button", { name: "Supprimer l’image 1" }));
     expect(screen.queryByRole("link", { name: "Ouvrir l’image 1" })).not.toBeInTheDocument();
+  });
+  it("imports multiple images and associates one with a color", async () => {
+    const user = userEvent.setup();
+    mocks.upload
+      .mockResolvedValueOnce({ ok: true, url: "https://shop.public.blob.vercel-storage.com/noir.webp" })
+      .mockResolvedValueOnce({ ok: true, url: "https://shop.public.blob.vercel-storage.com/cognac.webp" });
+    render(<ProductForm initialValue={{ ...validDraft, images: [] }} />);
+    await user.upload(screen.getByLabelText(/téléverser des images/i), [
+      new File(["black"], "noir.webp", { type: "image/webp" }),
+      new File(["brown"], "cognac.webp", { type: "image/webp" }),
+    ]);
+    expect(await screen.findByRole("link", { name: "Ouvrir l’image 1" })).toBeVisible();
+    expect(mocks.upload).toHaveBeenCalledTimes(2);
+    await user.click(screen.getAllByRole("radio", { name: "Noir" })[0]);
+    expect(screen.getAllByRole("radio", { name: "Noir" })[0]).toBeChecked();
   });
 });
 

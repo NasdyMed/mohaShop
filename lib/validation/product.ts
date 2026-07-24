@@ -14,6 +14,7 @@ const imageSchema = z.object({
     } catch { return false; }
   }, "L’image doit utiliser un hébergeur autorisé en HTTPS."),
   alt: clean(2, 160, "Le texte alternatif"),
+  color: clean(1, 60, "La couleur").nullable().default(null),
   position: z.number().int().min(0).max(9),
 }).strict();
 
@@ -47,6 +48,9 @@ export const productInputSchema = z.object({
     }
     if (positions.has(image.position)) context.addIssue({ code: "custom", path: ["images", index, "position"], message: "Les positions des images doivent être uniques." });
     positions.add(image.position);
+    if (image.color && !value.variants.some((variant) => variant.color.toLocaleLowerCase("fr") === image.color!.toLocaleLowerCase("fr"))) {
+      context.addIssue({ code: "custom", path: ["images", index, "color"], message: "Choisissez une couleur disponible pour ce produit." });
+    }
   });
   const skus = new Set<string>();
   const combinations = new Set<string>();
@@ -64,4 +68,4 @@ export const productInputSchema = z.object({
   });
 });
 
-export type ProductInput = z.infer<typeof productInputSchema>;
+export type ProductInput = z.input<typeof productInputSchema>;

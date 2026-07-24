@@ -50,7 +50,7 @@ export async function saveProduct(raw: ProductInput) {
 
       // Remote blob deletion is intentionally deferred: removing a DB image must not destructively delete its remote asset.
       await tx.productImage.deleteMany({ where: { productId: id } });
-      if (input.images.length) await tx.productImage.createMany({ data: input.images.map(({ url, alt, position }) => ({ productId: id!, url, alt, position })) });
+      if (input.images.length) await tx.productImage.createMany({ data: input.images.map(({ url, alt, color, position }) => ({ productId: id!, url, alt, color, position })) });
       return { id, slug: input.slug, ...(previousSlug ? { previousSlug } : {}) };
     });
   } catch (error) {

@@ -31,9 +31,9 @@ describe("Impeccable admin product form", () => {
   it("présente l’upload comme indisponible tant que Vercel Blob n’est pas configuré", () => {
     render(<ProductForm />);
 
-    expect(screen.getByRole("button", { name: /ajouter des images/i })).toBeDisabled();
-    expect(screen.getByText(/disponible après la configuration de vercel blob/i)).toBeVisible();
-    expect(screen.queryByLabelText(/téléverser une image/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/ajouter des images/i)).toBeVisible();
+    expect(screen.getByLabelText(/téléverser des images/i)).toHaveAttribute("multiple");
+    expect(screen.getByText(/jpeg, png ou webp/i)).toBeVisible();
   });
 
   it("affiche les images dans de vraies cartes avec aperçu et actions iconiques accessibles", () => {
@@ -64,7 +64,7 @@ describe("Impeccable admin product form", () => {
   it("migre une ancienne couleur libre vers la palette fixe", () => {
     render(<ProductForm initialValue={{ ...product, variants: [{ ...product.variants[0], color: "Brun" }] }} />);
 
-    expect(screen.getByRole("radio", { name: "Marron" })).toBeChecked();
+    expect(within(screen.getByRole("group", { name: "Déclinaisons" })).getByRole("radio", { name: "Marron" })).toBeChecked();
   });
 
   it("repasse automatiquement en brouillon si la dernière image est supprimée", async () => {

@@ -1,15 +1,16 @@
 "use client";
 
 import Image from "next/image";
-import { FormEvent, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { saveProductAction } from "@/app/actions/save-product";
+import { uploadProductImageAction } from "@/app/actions/upload-product-image";
 import { LoadingLabel } from "@/components/ui/loading-label";
-import { normalizeProductColor } from "@/lib/catalog/color-swatches";
+import { colorSwatch, normalizeProductColor } from "@/lib/catalog/color-swatches";
 import { EditableVariant, VariantEditor } from "./variant-editor";
 
-type EditableImage = { id?: string; url: string; alt: string; position: number };
+type EditableImage = { id?: string; url: string; alt: string; color?: string | null; position: number };
 type Value = { id?: string; name: string; description: string; priceDh: number; slug: string; isVisible: boolean; images: EditableImage[]; variants: EditableVariant[] };
 type Errors = Record<string, string[]>;
 const empty: Value = { name: "", description: "", priceDh: 1, slug: "", isVisible: false, images: [], variants: [] };
@@ -26,13 +27,16 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
   const router = useRouter();
   const [value, setValue] = useState<Value>(() => {
     const initial = initialValue ?? empty;
-    return { ...initial, variants: initial.variants.map((variant) => ({ ...variant, color: normalizeProductColor(variant.color) })) };
+    return { ...initial, images: initial.images.map((image) => ({ ...image, color: image.color ?? null })), variants: initial.variants.map((variant) => ({ ...variant, color: normalizeProductColor(variant.color) })) };
   });
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
   const operationLock = useRef(false);
   const [message, setMessage] = useState("");
   const [errors, setErrors] = useState<Errors>({});
   const canPublish = value.images.length > 0 && value.variants.length > 0;
+  const colors = [...new Set(value.variants.map((variant) => variant.color))];
 
   const move = (index: number, delta: number) => {
     const target = index + delta;
@@ -42,6 +46,29 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
     setValue({ ...value, images: images.map((image, position) => ({ ...image, position })) });
   };
 
+  async function uploadImages(event: ChangeEvent<HTMLInputElement>) {
+    const files = [...(event.target.files ?? [])].slice(0, Math.max(0, 10 - value.images.length));
+    event.target.value = "";
+    if (!files.length || uploading) return;
+    setUploading(true);
+    setMessage("");
+    const added: EditableImage[] = [];
+    try {
+      for (const file of files) {
+        const data = new FormData();
+        data.set("file", file);
+        const result = await uploadProductImageAction(data);
+        if (!result.ok) { setMessage(result.message); continue; }
+        added.push({ url: result.url, alt: `${value.name || "Produit"} — ${file.name.replace(/\.[^.]+$/, "")}`, color: null, position: value.images.length + added.length });
+      }
+      if (added.length) setValue((current) => ({ ...current, images: [...current.images, ...added].map((image, position) => ({ ...image, position })) }));
+    } catch {
+      setMessage("L’import a échoué. Vérifiez la configuration Vercel Blob puis réessayez.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (busy || operationLock.current) return;
@@ -50,7 +77,7 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
     setMessage("");
     setErrors({});
     try {
-      const result = await saveProductAction({ ...value, variants: value.variants.map(({ id, sku, size, color, stock }) => ({ id, sku, size, color, stock })) });
+      const result = await saveProductAction({ ...value, variants: value.variants.map(({ id, sku, size, color, stock }) => ({ ...(id ? { id } : {}), sku, size, color, stock })) });
       if (!result.ok) {
         setMessage(result.message);
         setErrors(result.fieldErrors);
@@ -87,8 +114,12 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
     <section className="admin-form-card" aria-labelledby="product-images-title">
       <div className="admin-section-heading"><div><span className="admin-section-index">02</span><h2 id="product-images-title">Images</h2></div><p>La première image devient la couverture du produit.</p></div>
       <FieldError errors={errors.images}/>
-      <div className="admin-upload-state"><button className="admin-outline-button" type="button" disabled><span aria-hidden="true">＋</span> Ajouter des images</button><p><strong>Import temporairement indisponible.</strong> Disponible après la configuration de Vercel Blob.</p></div>
-      {value.images.length === 0 ? <div className="admin-image-empty"><span aria-hidden="true">◇</span><strong>Aucune image</strong><p>Les images pourront être ajoutées après la configuration du stockage.</p></div> :
+      <div className="admin-upload-state">
+        <input ref={fileInput} className="visually-hidden" aria-label="Téléverser des images" type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={busy || uploading || value.images.length >= 10} onChange={uploadImages}/>
+        <button className="admin-outline-button" type="button" disabled={busy || uploading || value.images.length >= 10} onClick={() => fileInput.current?.click()}>{uploading ? <LoadingLabel>Import en cours…</LoadingLabel> : <><span aria-hidden="true">＋</span> Ajouter des images</>}</button>
+        <p><strong>JPEG, PNG ou WebP · 5 Mio maximum.</strong> Jusqu’à 10 visuels, généraux ou associés à une couleur.</p>
+      </div>
+      {value.images.length === 0 ? <div className="admin-image-empty"><span aria-hidden="true">◇</span><strong>Aucune image</strong><p>Importez un premier visuel pour préparer la fiche produit.</p></div> :
         <div className="admin-image-gallery" role="region" aria-label="Images du produit">
           {value.images.map((image, index) => <article className="admin-image-card" key={image.id ?? image.url}>
             <a className="admin-image-preview" href={image.url} target="_blank" rel="noreferrer" aria-label={`Ouvrir l’image ${index + 1}`}>
@@ -96,6 +127,10 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
             </a>
             <div className="admin-image-card-body">
               <label>Texte alternatif<input disabled={busy} required minLength={2} maxLength={160} aria-invalid={!!errors[`images.${index}.alt`]} aria-describedby={errors[`images.${index}.alt`] ? `product-image-${index}-alt-error` : undefined} value={image.alt} onChange={(event) => setValue({ ...value, images: value.images.map((item, current) => current === index ? { ...item, alt: event.target.value } : item) })}/></label>
+              <fieldset className="admin-image-color-picker"><legend>Visuel pour <strong>{image.color ?? "Toutes les couleurs"}</strong></legend><div className="admin-image-color-options">
+                <label className="admin-color-option is-general" title="Toutes les couleurs"><input type="radio" name={`image-color-${index}`} aria-label="Toutes les couleurs" checked={image.color == null} disabled={busy} onChange={() => setValue({ ...value, images: value.images.map((item, current) => current === index ? { ...item, color: null } : item) })}/><span aria-hidden="true">Toutes</span></label>
+                {colors.map((color) => <label className="admin-color-option" title={color} key={color}><input type="radio" name={`image-color-${index}`} aria-label={color} checked={image.color === color} disabled={busy} onChange={() => setValue({ ...value, images: value.images.map((item, current) => current === index ? { ...item, color } : item) })}/><span style={{ backgroundColor: colorSwatch(color).background }} aria-hidden="true"/></label>)}
+              </div></fieldset>
               <FieldError id={`product-image-${index}-alt-error`} errors={errors[`images.${index}.alt`]}/><FieldError errors={errors[`images.${index}.url`]}/><FieldError errors={errors[`images.${index}.position`]}/><FieldError errors={errors[`images.${index}.id`]}/>
               <div className="admin-image-actions">
                 <button className="admin-icon-button" aria-label={`Déplacer l’image ${index + 1} vers le haut`} title="Monter" disabled={busy || index === 0} type="button" onClick={() => move(index, -1)}><ArrowIcon direction="up"/></button>
