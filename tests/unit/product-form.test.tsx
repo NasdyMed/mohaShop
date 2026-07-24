@@ -69,7 +69,7 @@ describe("ProductForm", () => {
     expect(screen.getByRole("textbox", { name: "Texte alternatif" })).toHaveValue("Botte Atlas noire");
     await user.click(screen.getByRole("button", { name: "Enregistrer le produit" }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalledWith(validDraft));
-    expect(mocks.push).toHaveBeenCalledWith("/admin/produits/cm12345678901234567890123");
+    expect(mocks.push).toHaveBeenCalledWith("/admin/produits/cm12345678901234567890123?saved=1");
     await user.click(within(screen.getByRole("heading", { name: "Images" }).closest("section")!).getByRole("button", { name: "Supprimer l’image 1" }));
     expect(screen.queryByRole("link", { name: "Ouvrir l’image 1" })).not.toBeInTheDocument();
   });

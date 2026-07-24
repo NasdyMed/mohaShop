@@ -85,7 +85,7 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
         setErrors(result.fieldErrors);
         return;
       }
-      router.push(`/admin/produits/${result.id}`);
+      router.push(`/admin/produits/${result.id}?saved=1`);
       router.refresh();
     } catch {
       setMessage("L’état de l’enregistrement est incertain. Vérifiez le produit avant de réessayer.");
