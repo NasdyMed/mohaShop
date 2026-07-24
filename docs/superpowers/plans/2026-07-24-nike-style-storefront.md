@@ -229,4 +229,3 @@ git add app/globals.css components/shop tests/unit docs/superpowers/plans/2026-0
 git commit -m "feat: redesign storefront in nike-style layout"
 git push origin master
 ```
-
