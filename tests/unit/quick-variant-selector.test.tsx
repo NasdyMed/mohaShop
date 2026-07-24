@@ -1,15 +1,7 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { CartProvider, useCart } from "@/components/cart/cart-provider";
 import { QuickVariantSelector } from "@/components/shop/quick-variant-selector";
-
-const product = {
-  slug: "atlas",
-  name: "Bottine Atlas",
-  imageUrl: "https://example.com/atlas.webp",
-  unitPriceDh: 1290,
-};
 
 const variants = [
   { id: "cognac-40", sku: "ATLAS-C-40", color: "Cognac", size: "40", stock: 3 },
@@ -18,36 +10,19 @@ const variants = [
   { id: "noir-41", sku: "ATLAS-N-41", color: "Noir", size: "41", stock: 0 },
 ];
 
-function CartProbe() {
-  const { hydrated, items } = useCart();
-  return <output data-testid="cart-probe">{hydrated ? JSON.stringify(items) : "loading"}</output>;
-}
-
 function renderSelector(items = variants, onColorChange = vi.fn()) {
-  return render(
-    <CartProvider>
-      <QuickVariantSelector product={product} variants={items} onColorChange={onColorChange} />
-      <CartProbe />
-    </CartProvider>,
-  );
+  return render(<QuickVariantSelector productSlug="atlas" variants={items} onColorChange={onColorChange} />);
 }
 
-beforeEach(() => localStorage.clear());
 afterEach(cleanup);
 
 describe("QuickVariantSelector", () => {
-  it("shows sold-out colors and sizes but prevents their selection", async () => {
+  it("shows every color but prevents sold-out color selection", () => {
     renderSelector();
     expect(screen.getByRole("radio", { name: "Cognac" })).toBeChecked();
     expect(screen.getByRole("radio", { name: "Noir — épuisée" })).toBeDisabled();
-    const open = screen.getByRole("button", { name: "Choisir une taille" });
-    await waitFor(() => expect(open).toBeEnabled());
-    fireEvent.click(open);
-
-    expect(screen.getByRole("radio", { name: "Cognac" })).toBeChecked();
-    expect(screen.getByRole("radio", { name: "Noir — épuisée" })).toBeDisabled();
-    expect(screen.getByRole("radio", { name: "Pointure 42 — épuisée" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Ajouter au panier" })).toBeDisabled();
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.queryByText("Pointure")).toBeNull();
   });
 
   it("notifies the card when an available color is selected", () => {
@@ -61,30 +36,10 @@ describe("QuickVariantSelector", () => {
     expect(onColorChange).toHaveBeenLastCalledWith("Beige");
   });
 
-  it("adds the exact selected color and size with quantity one", async () => {
-    renderSelector();
-    const open = screen.getByRole("button", { name: "Choisir une taille" });
-    await waitFor(() => expect(open).toBeEnabled());
-    fireEvent.click(open);
-    fireEvent.click(screen.getByRole("radio", { name: "Pointure 40" }));
-    fireEvent.click(screen.getByRole("button", { name: "Ajouter au panier" }));
-
-    await waitFor(() => expect(screen.getByTestId("cart-probe")).toHaveTextContent("cognac-40"));
-    const cart = JSON.parse(screen.getByTestId("cart-probe").textContent ?? "[]");
-    expect(cart).toEqual([expect.objectContaining({
-      variantId: "cognac-40",
-      color: "Cognac",
-      size: "40",
-      availableStock: 3,
-      quantity: 1,
-    })]);
-    expect(screen.getByText("Bottine Atlas, taille 40, ajouté au panier.")).toHaveAttribute("aria-live", "polite");
-  });
-
-  it("does not offer quick add when every color is sold out", async () => {
+  it("keeps all sold-out colors visible without an add action", () => {
     renderSelector(variants.map((variant) => ({ ...variant, stock: 0 })));
-    await waitFor(() => expect(screen.getByTestId("cart-probe")).not.toHaveTextContent("loading"));
-    expect(screen.getByText("Rupture de stock")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Choisir une taille" })).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Cognac — épuisée" })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "Noir — épuisée" })).toBeDisabled();
+    expect(screen.queryByRole("button")).toBeNull();
   });
 });

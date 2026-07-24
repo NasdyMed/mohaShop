@@ -1,0 +1,40 @@
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { CartProvider } from "@/components/cart/cart-provider";
+import { ProductDetailExperience } from "@/components/shop/product-detail-experience";
+
+vi.mock("next/image", () => ({ default: ({ alt, src }: { alt: string; src: string }) => <span role="img" aria-label={alt} data-src={src} /> }));
+
+afterEach(cleanup);
+
+const product = {
+  slug: "atlas",
+  name: "Bottine Atlas",
+  description: "Une bottine confortable.",
+  priceDh: 1290,
+  image: { id: "cognac", url: "/cognac.jpg", alt: "Atlas cognac", color: "Cognac" },
+  images: [
+    { id: "cognac", url: "/cognac.jpg", alt: "Atlas cognac", color: "Cognac" },
+    { id: "cognac-side", url: "/cognac-side.jpg", alt: "Atlas cognac profil", color: "Cognac" },
+  ],
+  variants: [
+    { id: "c40", sku: "C40", color: "Cognac", size: "40", stock: 3 },
+    { id: "c41", sku: "C41", color: "Cognac", size: "41", stock: 0 },
+  ],
+  available: true,
+};
+
+describe("ProductDetailExperience", () => {
+  it("uses the reference shopping hierarchy and EU size grid", () => {
+    const { container } = render(<CartProvider><ProductDetailExperience product={product} /></CartProvider>);
+
+    expect(screen.getByRole("heading", { name: "Bottine Atlas" })).toBeInTheDocument();
+    expect(screen.getByText("Botte")).toBeInTheDocument();
+    expect(screen.getByText("EU 40")).toBeInTheDocument();
+    expect(screen.getByText("EU 41")).toBeInTheDocument();
+    expect(container.querySelector(".size-option-grid")).toBeInTheDocument();
+    expect(screen.queryByText("Botte signature")).toBeNull();
+    expect(screen.queryByText("Collection · Maison Botte")).toBeNull();
+  });
+});

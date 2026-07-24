@@ -25,15 +25,14 @@ export function ProductDetailExperience({ product }: Props) {
 
   return <article className="product-detail shell">
     <div className="product-gallery-column">
-      <p className="product-detail-index">Collection · Maison Botte</p>
       <ProductGallery images={product.images} productName={product.name} selectedColor={selectedColor}/>
     </div>
     <div className="product-info" aria-label={`Acheter ${product.name}`}>
-      <p className="eyebrow">Botte signature</p>
       <h1>{product.name}</h1>
+      <p className="product-detail-category">Botte</p>
       <div className="detail-price-row"><p className="detail-price">{formatPriceDh(product.priceDh)}</p><span>TVA incluse</span></div>
       <p className="description">{product.description}</p>
-      {product.available ? <ProductPurchase product={{ slug: product.slug, name: product.name, imageUrl: product.image?.url ?? null, unitPriceDh: product.priceDh }} variants={product.variants} onVariantChange={selectVariant}/> : <p className="sold-out">Rupture de stock</p>}
+      {product.available ? <ProductPurchase product={{ slug: product.slug, name: product.name, imageUrl: product.image?.url ?? null, unitPriceDh: product.priceDh }} variants={product.variants} images={product.images} onVariantChange={selectVariant}/> : <p className="sold-out">Rupture de stock</p>}
       <aside className="service-note"><div><span aria-hidden="true">✓</span><p><strong>Paiement à la livraison</strong><small>Réglez à la réception de votre commande.</small></p></div><div><span aria-hidden="true">→</span><p><strong>Livraison partout au Maroc</strong><small>Sans création de compte.</small></p></div></aside>
     </div>
   </article>;

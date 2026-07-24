@@ -4,11 +4,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { VariantPicker, type CatalogVariant } from "@/components/shop/variant-picker";
 
+vi.mock("next/image", () => ({ default: ({ alt, src }: { alt: string; src: string }) => <span role="img" aria-label={alt} data-src={src} /> }));
+
 const variants = [
   { id: "cognac-40", sku: "COG-40", color: "Cognac", size: "40", stock: 2 },
   { id: "cognac-41", sku: "COG-41", color: "Cognac", size: "41", stock: 0 },
   { id: "noir-41", sku: "NOI-41", color: "Noir", size: "41", stock: 4 },
 ] satisfies CatalogVariant[];
+const images = [
+  { id: "cognac-image", url: "/cognac.jpg", alt: "Botte cognac", color: "Cognac" },
+];
 
 afterEach(cleanup);
 
@@ -84,5 +89,15 @@ describe("VariantPicker", () => {
     await user.keyboard(" ");
 
     expect(onSelect).toHaveBeenLastCalledWith(variants[2]);
+  });
+
+  it("renders image tiles for colors and falls back to a swatch", () => {
+    const { container } = render(<VariantPicker variants={variants} images={images} onSelect={vi.fn()} />);
+
+    const cognacTile = screen.getByRole("radio", { name: "Cognac" }).closest("label");
+    const noirTile = screen.getByRole("radio", { name: "Noir" }).closest("label");
+    expect(cognacTile?.querySelector('[role="img"]')).toHaveAttribute("data-src", "/cognac.jpg");
+    expect(noirTile?.querySelector(".variant-color-fallback")).toBeInTheDocument();
+    expect(container.querySelector(".color-tile-grid")).toBeInTheDocument();
   });
 });

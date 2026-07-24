@@ -37,18 +37,14 @@ export function ProductCard({ product }: { product: CatalogProductCard }) {
         </div>
       </Link>
       <div className="product-card-copy">
-        <div className="product-card-heading"><Link className="product-card-name" href={`/produits/${product.slug}`}><h2>{product.name}</h2></Link><strong className="product-card-price">{formatPriceDh(product.priceDh)}</strong></div>
-        <Link className="product-card-detail" href={`/produits/${product.slug}`}>Voir le modèle <span aria-hidden="true">↗</span></Link>
         <QuickVariantSelector
-          product={{
-            slug: product.slug,
-            name: product.name,
-            imageUrl: currentImage?.url ?? null,
-            unitPriceDh: product.priceDh,
-          }}
+          productSlug={product.slug}
           variants={product.variants}
           onColorChange={setSelectedColor}
         />
+        <Link className="product-card-name" href={`/produits/${product.slug}`}><h2>{product.name}</h2></Link>
+        <p className="product-card-category">Botte</p>
+        <strong className="product-card-price">{formatPriceDh(product.priceDh)}</strong>
       </div>
     </article>
   );

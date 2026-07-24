@@ -50,12 +50,14 @@ describe("catalog layout", () => {
     expect(filters.compareDocumentPosition(screen.getByRole("heading", { name: "Bottine Atlas" })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("keeps quick-add controls outside the product link", async () => {
+  it("uses the reference card anatomy without quick-add controls", async () => {
     render(<CartProvider>{await CatalogPage()}</CartProvider>);
     const productLink = screen.getByRole("link", { name: "Découvrir Bottine Atlas" });
 
     expect(productLink.querySelector("button")).toBeNull();
-    expect(await screen.findByRole("button", { name: "Choisir une taille" })).toBeInTheDocument();
+    expect(screen.getByText("Botte")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Choisir une taille" })).toBeNull();
+    expect(screen.queryByText("Voir le modèle")).toBeNull();
     expect(document.querySelector(".product-card-index")).toBeNull();
   });
 

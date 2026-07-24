@@ -1,13 +1,19 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 
 import { colorSwatch } from "@/lib/catalog/color-swatches";
+import type { CatalogImage } from "@/lib/catalog/queries";
 
 export type CatalogVariant = { id: string; sku: string; color: string; size: string; stock: number };
-type VariantPickerProps = { variants: readonly CatalogVariant[]; onSelect?: (variant: CatalogVariant | null) => void };
+type VariantPickerProps = {
+  variants: readonly CatalogVariant[];
+  images?: readonly CatalogImage[];
+  onSelect?: (variant: CatalogVariant | null) => void;
+};
 
-export function VariantPicker({ variants, onSelect }: VariantPickerProps) {
+export function VariantPicker({ variants, images = [], onSelect }: VariantPickerProps) {
   const initial = variants.find((variant) => variant.stock > 0) ?? null;
   const [chosenColor, setColor] = useState<string | null>(() => initial?.color ?? null);
   const [chosenSize, setSize] = useState<string | null>(() => initial?.size ?? null);
@@ -36,21 +42,27 @@ export function VariantPicker({ variants, onSelect }: VariantPickerProps) {
   return <div className="variant-picker">
     <fieldset>
       <legend>Couleur <strong>{effectiveColor}</strong></legend>
-      <div className="option-row color-option-row">{colors.map((option) => {
+      <div className="color-tile-grid">{colors.map((option) => {
         const available = variants.some((variant) => variant.color === option && variant.stock > 0);
+        const colorImage = images.find((image) => image.color === option);
         return <label className={`variant-color-option${available ? "" : " is-sold-out"}`} key={option} title={option}>
           <input type="radio" name="color" value={option} aria-label={available ? option : `${option} — Rupture de stock`} checked={effectiveColor === option} disabled={!available} onChange={() => chooseColor(option)}/>
-          <span style={{ backgroundColor: colorSwatch(option).background }} aria-hidden="true"/>
+          <span className="variant-color-visual" aria-hidden="true">
+            {colorImage
+              ? <Image src={colorImage.url} alt="" fill sizes="88px" />
+              : <span className="variant-color-fallback" style={{ backgroundColor: colorSwatch(option).background }} />}
+          </span>
+          <span className="variant-color-name" aria-hidden="true">{option}</span>
         </label>;
       })}</div>
     </fieldset>
     <fieldset>
       <legend>Pointure <strong>{effectiveSize}</strong></legend>
-      <div className="option-row">{sizes.map((option) => {
+      <div className="size-option-grid">{sizes.map((option) => {
         const matching = effectiveColor ? variants.find((variant) => variant.color === effectiveColor && variant.size === option) : undefined;
         const available = Boolean(matching && matching.stock > 0);
         const soldOut = !matching || matching.stock === 0;
-        return <label className="variant-option" key={option}><input type="radio" name="size" value={option} checked={effectiveSize === option} disabled={!available} aria-label={soldOut ? `${option} — Rupture de stock` : option} onChange={() => chooseSize(option)}/><span>{option}{soldOut ? <small>Rupture de stock</small> : null}</span></label>;
+        return <label className="variant-option" key={option}><input type="radio" name="size" value={option} checked={effectiveSize === option} disabled={!available} aria-label={soldOut ? `${option} — Rupture de stock` : option} onChange={() => chooseSize(option)}/><span>EU {option}{soldOut ? <small>Rupture de stock</small> : null}</span></label>;
       })}</div>
     </fieldset>
     <p className="stock-cue" aria-live="polite">{selected ? selected.stock <= 3 ? `Plus que ${selected.stock} en stock` : `${selected.stock} disponibles` : selectedCombination?.stock === 0 ? "Rupture de stock" : "Aucune combinaison disponible."}</p>
