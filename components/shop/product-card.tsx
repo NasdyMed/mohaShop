@@ -5,13 +5,8 @@ import Link from "next/link";
 import { useState } from "react";
 
 import type { CatalogProductCard } from "@/lib/catalog/queries";
+import { formatPriceDh } from "@/lib/catalog/price";
 import { QuickVariantSelector } from "./quick-variant-selector";
-
-const priceFormatter = new Intl.NumberFormat("fr-MA", { maximumFractionDigits: 0 });
-
-export function formatPriceDh(priceDh: number) {
-  return `${priceFormatter.format(priceDh).replace(/\u202f/g, " ")} DH`;
-}
 
 export function ProductCard({ product }: { product: CatalogProductCard }) {
   const firstColor = product.variants.find((variant) => variant.stock > 0)?.color ?? product.variants[0]?.color ?? null;

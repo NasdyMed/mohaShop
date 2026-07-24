@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
 import { createOrderAction } from "@/app/actions/create-order";
-import { formatPriceDh } from "@/components/shop/product-card";
+import { formatPriceDh } from "@/lib/catalog/price";
 import { LoadingLabel } from "@/components/ui/loading-label";
 import { checkoutSchema } from "@/lib/validation/checkout";
 import { useCart } from "./cart-provider";

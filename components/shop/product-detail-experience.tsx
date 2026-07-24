@@ -2,8 +2,8 @@
 
 import { useCallback, useState } from "react";
 import { ProductPurchase } from "@/components/cart/product-purchase";
-import { formatPriceDh } from "@/components/shop/product-card";
 import { ProductGallery } from "@/components/shop/product-gallery";
+import { formatPriceDh } from "@/lib/catalog/price";
 import type { CatalogImage, CatalogVariant } from "@/lib/catalog/queries";
 
 type Props = {

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
-import { formatPriceDh } from "@/components/shop/product-card";
+import { formatPriceDh } from "@/lib/catalog/price";
 import { getOrderConfirmation } from "@/lib/orders/queries";
 
 export const dynamic = "force-dynamic";

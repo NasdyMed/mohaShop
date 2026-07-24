@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { formatPriceDh } from "@/components/shop/product-card";
+import { formatPriceDh } from "@/lib/catalog/price";
 import { useCart } from "./cart-provider";
 
 export function CartView() {
