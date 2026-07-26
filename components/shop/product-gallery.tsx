@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 
 import type { CatalogImage } from "@/lib/catalog/queries";
+import { useStorefrontI18n } from "./locale-provider";
 
 export function selectProductImages(images: CatalogImage[], selectedColor: string | null) {
   if (!selectedColor) return images;
@@ -13,17 +14,18 @@ export function selectProductImages(images: CatalogImage[], selectedColor: strin
 }
 
 export function ProductGallery({ images, productName, selectedColor = null }: { images: CatalogImage[]; productName: string; selectedColor?: string | null }) {
+  const { dictionary } = useStorefrontI18n();
   const visibleImages = selectProductImages(images, selectedColor);
   const [activeId, setActiveId] = useState<string | null>(() => visibleImages[0]?.id ?? null);
   const activeImage = visibleImages.find((image) => image.id === activeId) ?? visibleImages[0];
 
   if (visibleImages.length === 0) {
-    return <div className="gallery-fallback" role="img" aria-label={`Aperçu indisponible pour ${productName}`}>BB</div>;
+    return <div className="gallery-fallback" role="img" aria-label={`${dictionary.product.unavailablePreview} ${productName}`}>BB</div>;
   }
 
   return (
-    <section className={`product-gallery${visibleImages.length > 1 ? " has-thumbnails" : ""}`} aria-label="Galerie du produit">
-      {visibleImages.length > 1 && <div className="gallery-thumbnails" aria-label="Autres vues du produit">
+    <section className={`product-gallery${visibleImages.length > 1 ? " has-thumbnails" : ""}`} aria-label={dictionary.product.gallery}>
+      {visibleImages.length > 1 && <div className="gallery-thumbnails" aria-label={dictionary.product.gallery}>
         {visibleImages.map((image) => <button type="button" className="gallery-thumbnail" aria-label={`Afficher ${image.alt}`} aria-pressed={image.id === activeImage?.id} onClick={() => setActiveId(image.id)} key={image.id}>
           <Image src={image.url} alt="" fill sizes="80px"/>
         </button>)}

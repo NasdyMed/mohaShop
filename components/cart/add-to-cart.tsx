@@ -4,10 +4,13 @@ import Link from "next/link";
 import { useState } from "react";
 import type { CatalogVariant } from "@/components/shop/variant-picker";
 import { useCart } from "./cart-provider";
+import { localizePath } from "@/lib/i18n/config";
+import { useStorefrontI18n } from "@/components/shop/locale-provider";
 
 export type ProductSnapshot = { slug: string; name: string; imageUrl: string | null; unitPriceDh: number };
 
 export function AddToCart({ product, variant }: { product: ProductSnapshot; variant: CatalogVariant | null }) {
+  const { locale, dictionary } = useStorefrontI18n();
   const { dispatch } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [confirmation, setConfirmation] = useState<{ variantId: string; message: string } | null>(null);
@@ -17,13 +20,13 @@ export function AddToCart({ product, variant }: { product: ProductSnapshot; vari
   function add() {
     if (!variant || variant.stock < 1) return;
     dispatch({ type: "add", item: { variantId: variant.id, productSlug: product.slug, productName: product.name, imageUrl: product.imageUrl, size: variant.size, color: variant.color, unitPriceDh: product.unitPriceDh, availableStock: variant.stock }, quantity: safeQuantity });
-    setConfirmation({ variantId: variant.id, message: `${safeQuantity} ${safeQuantity > 1 ? "articles ajoutés" : "article ajouté"} au panier.` });
+    setConfirmation({ variantId: variant.id, message: `${safeQuantity} ${safeQuantity > 1 ? dictionary.common.products : dictionary.common.product} · ${dictionary.cart.added}` });
   }
 
   return <div className="add-to-cart">
-    <label htmlFor="product-quantity">Quantité</label>
+    <label htmlFor="product-quantity">{dictionary.cart.quantity}</label>
     <input id="product-quantity" type="number" inputMode="numeric" min={1} max={variant?.stock ?? 1} value={safeQuantity} disabled={!available} onChange={(event) => setQuantity(Math.min(Math.max(Math.floor(event.currentTarget.valueAsNumber || 1), 1), variant?.stock ?? 1))} />
-    <button type="button" disabled={!available} onClick={add}>{available ? "Ajouter au panier" : "Sélectionnez une variante"}</button>
-    <p className="cart-confirmation" aria-live="polite">{confirmation && confirmation.variantId === variant?.id ? <>{confirmation.message} <Link className="touch-link" href="/panier">Voir le panier</Link></> : null}</p>
+    <button type="button" disabled={!available} onClick={add}>{available ? dictionary.product.addToCart : dictionary.product.selectVariant}</button>
+    <p className="cart-confirmation" aria-live="polite">{confirmation && confirmation.variantId === variant?.id ? <>{confirmation.message} <Link className="touch-link" href={localizePath("/panier", locale)}>{dictionary.cart.viewCart}</Link></> : null}</p>
   </div>;
 }

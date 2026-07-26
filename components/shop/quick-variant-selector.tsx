@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 import { colorSwatch } from "@/lib/catalog/color-swatches";
 import type { CatalogVariant } from "@/lib/catalog/queries";
+import { useStorefrontI18n } from "./locale-provider";
 
 type QuickVariantSelectorProps = {
   productSlug: string;
@@ -12,6 +13,7 @@ type QuickVariantSelectorProps = {
 };
 
 export function QuickVariantSelector({ productSlug, variants, onColorChange }: QuickVariantSelectorProps) {
+  const { locale, dictionary } = useStorefrontI18n();
   const groups = useMemo(() => {
     const byColor = new Map<string, CatalogVariant[]>();
     for (const variant of variants) {
@@ -34,13 +36,13 @@ export function QuickVariantSelector({ productSlug, variants, onColorChange }: Q
 
   return (
     <fieldset className="quick-color-fieldset">
-      <legend className="sr-only">Couleur</legend>
+      <legend className="sr-only">{dictionary.product.color}</legend>
       <div className="quick-color-options">
         {groups.map((group) => {
           const soldOut = !group.available;
           const swatch = colorSwatch(group.color);
           return (
-            <label className={`quick-color-option${soldOut ? " is-sold-out" : ""}`} key={group.color} title={group.color}>
+            <label className={`quick-color-option${soldOut ? " is-sold-out" : ""}`} key={group.color} title={dictionary.colors[group.color] ?? group.color}>
               <input
                 className="quick-variant-radio"
                 type="radio"
@@ -48,7 +50,7 @@ export function QuickVariantSelector({ productSlug, variants, onColorChange }: Q
                 value={group.color}
                 checked={selectedColor === group.color}
                 disabled={soldOut}
-                aria-label={`${group.color}${soldOut ? " — épuisée" : ""}`}
+                aria-label={`${dictionary.colors[group.color] ?? group.color}${soldOut ? ` — ${locale === "fr" ? "épuisée" : dictionary.stock.outOfStock}` : ""}`}
                 onChange={() => chooseColor(group.color)}
               />
               <span className="quick-color-swatch" data-known-color={swatch.known} style={{ backgroundColor: swatch.background }} aria-hidden="true" />
