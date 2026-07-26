@@ -16,7 +16,9 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, refres
 
 const validDraft = {
   name: "Botte Atlas",
+  nameAr: "",
   description: "Une description suffisamment longue pour le formulaire.",
+  descriptionAr: "",
   priceDh: 850,
   slug: "botte-atlas",
   isVisible: false,
@@ -28,6 +30,13 @@ beforeEach(() => vi.clearAllMocks());
 afterEach(cleanup);
 
 describe("ProductForm", () => {
+  it("permet de saisir les traductions arabes facultatives", () => {
+    render(<ProductForm initialValue={validDraft} />);
+    expect(screen.getByRole("textbox", { name: "Nom en arabe" })).toHaveAttribute("dir", "rtl");
+    expect(screen.getByRole("textbox", { name: "Description en arabe" })).toHaveAttribute("dir", "rtl");
+    expect(screen.getByText(/le contenu français sera utilisé/i)).toBeVisible();
+  });
+
   it("explique pourquoi un produit sans image ni déclinaison ne peut pas être visible", () => {
     render(<ProductForm />);
     expect(screen.getByRole("checkbox", { name: /produit visible/i })).toBeDisabled();

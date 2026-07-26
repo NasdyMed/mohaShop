@@ -4,6 +4,10 @@ const noControls = (value: string) => !/[\u0000-\u0008\u000B\u000C\u000E-\u001F\
 const clean = (min: number, max: number, label: string) => z.string()
   .transform((value) => value.trim())
   .pipe(z.string().min(min, `${label} est trop court.`).max(max, `${label} est trop long.`).refine(noControls, `${label} contient des caractères interdits.`));
+const optionalClean = (min: number, max: number, label: string) => z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "") || value == null ? null : value,
+  clean(min, max, label).nullable(),
+);
 
 const imageSchema = z.object({
   id: z.string().cuid().optional(),
@@ -29,8 +33,10 @@ const variantSchema = z.object({
 export const productInputSchema = z.object({
   id: z.string().cuid().optional(),
   name: clean(2, 120, "Le nom"),
+  nameAr: optionalClean(2, 120, "Le nom en arabe"),
   description: z.string().transform((value) => value.replace(/\r\n?/g, "\n").trim())
     .pipe(z.string().min(20, "La description est trop courte.").max(3000, "La description est trop longue.").refine(noControls, "La description contient des caractères interdits.")),
+  descriptionAr: optionalClean(20, 3000, "La description en arabe"),
   priceDh: z.number().safe().int().min(1).max(1_000_000),
   slug: z.string().trim().max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug invalide."),
   isVisible: z.boolean(),

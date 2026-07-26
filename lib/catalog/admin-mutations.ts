@@ -22,13 +22,13 @@ export async function saveProduct(raw: ProductInput) {
       let id = input.id;
       let previousSlug: string | undefined;
       if (!id) {
-        const product = await tx.product.create({ data: { name: input.name, description: input.description, priceDh: input.priceDh, slug: input.slug, isVisible: input.isVisible }, select: { id: true } });
+        const product = await tx.product.create({ data: { name: input.name, nameAr: input.nameAr, description: input.description, descriptionAr: input.descriptionAr, priceDh: input.priceDh, slug: input.slug, isVisible: input.isVisible }, select: { id: true } });
         id = product.id;
       } else {
         const exists = await tx.product.findUnique({ where: { id }, select: { id: true, slug: true } });
         if (!exists) throw new ProductMutationError("NOT_FOUND");
         if (exists.slug !== input.slug) previousSlug = exists.slug;
-        await tx.product.update({ where: { id }, data: { name: input.name, description: input.description, priceDh: input.priceDh, slug: input.slug, isVisible: input.isVisible } });
+        await tx.product.update({ where: { id }, data: { name: input.name, nameAr: input.nameAr, description: input.description, descriptionAr: input.descriptionAr, priceDh: input.priceDh, slug: input.slug, isVisible: input.isVisible } });
       }
 
       const existingVariants = await tx.productVariant.findMany({ where: { productId: id }, select: { id: true, _count: { select: { orderItems: true } } } });

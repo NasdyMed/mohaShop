@@ -18,7 +18,9 @@ model Product {
   id          String           @id @default(cuid())
   slug        String           @unique
   name        String
+  nameAr      String?
   description String
+  descriptionAr String?
   priceDh     Int
   isVisible   Boolean          @default(false)
   images      ProductImage[]

@@ -11,9 +11,9 @@ import { colorSwatch, normalizeProductColor, productColorOptions } from "@/lib/c
 import { EditableVariant, VariantEditor } from "./variant-editor";
 
 type EditableImage = { id?: string; url: string; alt: string; color?: string | null; position: number };
-type Value = { id?: string; name: string; description: string; priceDh: number; slug: string; isVisible: boolean; images: EditableImage[]; variants: EditableVariant[] };
+type Value = { id?: string; name: string; nameAr: string; description: string; descriptionAr: string; priceDh: number; slug: string; isVisible: boolean; images: EditableImage[]; variants: EditableVariant[] };
 type Errors = Record<string, string[]>;
-const empty: Value = { name: "", description: "", priceDh: 1, slug: "", isVisible: false, images: [], variants: [] };
+const empty: Value = { name: "", nameAr: "", description: "", descriptionAr: "", priceDh: 1, slug: "", isVisible: false, images: [], variants: [] };
 const FieldError = ({ errors, id }: { errors?: string[]; id?: string }) => errors?.map((error, index) => <p className="field-error" id={index === 0 ? id : undefined} key={error}>{error}</p>);
 
 function ArrowIcon({ direction }: { direction: "up" | "down" }) {
@@ -101,10 +101,13 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
       <div className="admin-section-heading"><div><span className="admin-section-index">01</span><h2 id="product-details-title">Informations</h2></div><p>Les informations essentielles présentées dans la boutique.</p></div>
       <div className="product-fields-grid">
         <label>Nom<input disabled={busy} required minLength={2} maxLength={120} aria-invalid={!!errors.name} aria-describedby={errors.name ? "product-name-error" : undefined} value={value.name} onChange={(event) => setValue({ ...value, name: event.target.value })}/></label><FieldError id="product-name-error" errors={errors.name}/>
+        <label>Nom en arabe<input dir="rtl" disabled={busy} minLength={2} maxLength={120} aria-invalid={!!errors.nameAr} aria-describedby={errors.nameAr ? "product-name-ar-error" : undefined} value={value.nameAr} onChange={(event) => setValue({ ...value, nameAr: event.target.value })}/></label><FieldError id="product-name-ar-error" errors={errors.nameAr}/>
         <label>Slug<input disabled={busy} required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" maxLength={120} aria-invalid={!!errors.slug} aria-describedby={errors.slug ? "product-slug-error" : undefined} value={value.slug} onChange={(event) => setValue({ ...value, slug: event.target.value })}/></label><FieldError id="product-slug-error" errors={errors.slug}/>
         <label>Prix (DH)<input disabled={busy} required type="number" min={1} max={1_000_000} aria-invalid={!!errors.priceDh} aria-describedby={errors.priceDh ? "product-price-error" : undefined} value={value.priceDh} onChange={(event) => setValue({ ...value, priceDh: Number(event.target.value) })}/></label><FieldError id="product-price-error" errors={errors.priceDh}/>
         <label className="product-description-field">Description<textarea disabled={busy} required minLength={20} maxLength={3000} rows={6} aria-invalid={!!errors.description} aria-describedby={errors.description ? "product-description-error" : undefined} value={value.description} onChange={(event) => setValue({ ...value, description: event.target.value })}/></label><FieldError id="product-description-error" errors={errors.description}/>
+        <label className="product-description-field">Description en arabe<textarea dir="rtl" disabled={busy} minLength={20} maxLength={3000} rows={6} aria-invalid={!!errors.descriptionAr} aria-describedby={errors.descriptionAr ? "product-description-ar-error" : undefined} value={value.descriptionAr} onChange={(event) => setValue({ ...value, descriptionAr: event.target.value })}/></label><FieldError id="product-description-ar-error" errors={errors.descriptionAr}/>
       </div>
+      <p className="admin-inline-note">Le contenu français sera utilisé dans la boutique arabe si une traduction est vide.</p>
       <div className="product-visibility-row">
         <div><strong>Publication</strong><span>{value.isVisible ? "Le produit est visible dans la boutique." : "Le produit reste en brouillon."}</span></div>
         <label className="admin-switch"><input disabled={busy || (!value.isVisible && !canPublish)} type="checkbox" checked={value.isVisible} onChange={(event) => setValue({ ...value, isVisible: event.target.checked })}/><span aria-hidden="true"/><b>Produit visible</b></label>

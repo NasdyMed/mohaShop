@@ -12,7 +12,16 @@ describe("productInputSchema", () => {
   it("normalise les champs et accepte un produit publiable", () => {
     const parsed = productInputSchema.parse(valid);
     expect(parsed.name).toBe("Bottes Atlas");
+    expect(parsed.nameAr).toBeNull();
+    expect(parsed.descriptionAr).toBeNull();
     expect(parsed.variants[0].sku).toBe("ATLAS-38-NOIR");
+  });
+
+  it("normalise les traductions arabes facultatives", () => {
+    const parsed = productInputSchema.parse({ ...valid, nameAr: "  حذاء أطلس  ", descriptionAr: "  حذاء مريح وأنيق مناسب للاستعمال اليومي في المغرب.  " });
+    expect(parsed.nameAr).toBe("حذاء أطلس");
+    expect(parsed.descriptionAr).toBe("حذاء مريح وأنيق مناسب للاستعمال اليومي في المغرب.");
+    expect(productInputSchema.safeParse({ ...valid, nameAr: "ا" }).success).toBe(false);
   });
 
   it("interdit la publication sans image ou déclinaison", () => {
