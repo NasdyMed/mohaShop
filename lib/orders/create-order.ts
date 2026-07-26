@@ -127,7 +127,7 @@ export async function createOrder(rawInput: unknown): Promise<CreateOrderResult>
           productSlugs.add(variant.product.slug);
           lines.push({
             variantId: variant.id,
-            productName: variant.product.name,
+            productName: checkout.locale === "ar" ? variant.product.nameAr?.trim() || variant.product.name : variant.product.name,
             size: variant.size,
             color: variant.color,
             unitPriceDh: variant.product.priceDh,

@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function ArabicShopLayout({ children }: { children: React.ReactNode }) {
-  return <Providers><StorefrontShell locale="ar">{children}</StorefrontShell></Providers>;
+  return <StorefrontShell locale="ar"><Providers>{children}</Providers></StorefrontShell>;
 }

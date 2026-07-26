@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import { cartReducer, sanitizeCartItems, selectItemCount, selectTotal } from "./cart-reducer";
 import type { CartAction, CartItem } from "./cart-types";
 import { CartFeedback } from "./cart-feedback";
+import { useStorefrontI18n } from "@/components/shop/locale-provider";
 
 const STORAGE_KEY = "boots-cart-v1";
 
@@ -39,6 +40,7 @@ function readStoredCart(): CartItem[] {
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
+  const { locale, dictionary } = useStorefrontI18n();
   const [{ items, hydrated }, reducerDispatch] = useReducer(
     (state: { items: CartItem[]; hydrated: boolean }, action: CartAction) => ({
       items: cartReducer(state.items, action),
@@ -54,10 +56,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const quantity = Math.max(1, action.quantity);
       setNotice({
         id: Date.now(),
-        message: `${action.item.productName} a été ajouté au panier${quantity > 1 ? ` · ${quantity} articles` : ""}.`,
+        message: locale === "fr"
+          ? `${action.item.productName} a été ajouté au panier${quantity > 1 ? ` · ${quantity} articles` : ""}.`
+          : `${action.item.productName} · ${dictionary.cart.added}${quantity > 1 ? ` · ${quantity} ${dictionary.common.products}` : ""}`,
       });
     }
-  }, []);
+  }, [dictionary.cart.added, dictionary.common.products, locale]);
 
   useEffect(() => {
     reducerDispatch({ type: "hydrate", items: readStoredCart() });

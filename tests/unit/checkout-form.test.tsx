@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CartProvider } from "@/components/cart/cart-provider";
 import { CheckoutForm } from "@/components/cart/checkout-form";
+import { LocaleProvider } from "@/components/shop/locale-provider";
 
 const { createOrderAction, push } = vi.hoisted(() => ({
   createOrderAction: vi.fn(),
@@ -26,9 +27,9 @@ const cartItem = {
   quantity: 2,
 };
 
-function renderCheckout(items = [cartItem]) {
+function renderCheckout(items = [cartItem], locale: "fr" | "ar" = "fr") {
   localStorage.setItem("boots-cart-v1", JSON.stringify(items));
-  return render(<CartProvider><CheckoutForm /></CartProvider>);
+  return render(<LocaleProvider locale={locale}><CartProvider><CheckoutForm /></CartProvider></LocaleProvider>);
 }
 
 async function fillValidForm() {
@@ -50,6 +51,13 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe("CheckoutForm", () => {
+  it("affiche le parcours de livraison en arabe et conserve la route arabe", async () => {
+    renderCheckout([cartItem], "ar");
+    expect(await screen.findByRole("heading", { name: "معلومات التوصيل" })).toBeVisible();
+    expect(screen.getByLabelText("الاسم الأول")).toBeVisible();
+    expect(screen.getByRole("button", { name: "تأكيد الطلب" })).toBeVisible();
+  });
+
   it("attend l’hydratation puis affiche un état vide avec retour au catalogue", async () => {
     renderCheckout([]);
     expect(await screen.findByRole("heading", { name: "Votre panier est vide." })).toBeInTheDocument();

@@ -85,6 +85,7 @@ export const checkoutSchema = z
       "Le code postal doit contenir 5 chiffres.",
     ).transform((value) => value || undefined),
     country: z.literal("Maroc", { error: "Le pays doit être le Maroc." }),
+    locale: z.enum(["fr", "ar"]).optional(),
     deliveryNotes: optionalText(500, "Les instructions de livraison"),
     items: z
       .array(checkoutItemSchema, { error: "Le panier doit contenir des articles." })

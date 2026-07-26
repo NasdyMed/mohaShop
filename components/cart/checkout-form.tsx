@@ -9,6 +9,8 @@ import { formatPriceDh } from "@/lib/catalog/price";
 import { LoadingLabel } from "@/components/ui/loading-label";
 import { checkoutSchema } from "@/lib/validation/checkout";
 import { useCart } from "./cart-provider";
+import { localizePath } from "@/lib/i18n/config";
+import { useStorefrontI18n } from "@/components/shop/locale-provider";
 
 type CustomerFields = {
   firstName: string; lastName: string; phone: string; email: string; address: string;
@@ -30,6 +32,23 @@ const failureMessages = {
 } as const;
 
 export function CheckoutForm() {
+  const { locale, dictionary } = useStorefrontI18n();
+  const ar = locale === "ar";
+  const labels = ar ? {
+    heading: "معلومات التوصيل", eyebrow: "إتمام طلبك", intro: "سنستخدم هذه المعلومات فقط لتحضير طلبك وتوصيله.",
+    contact: "معلوماتك", firstName: "الاسم الأول", lastName: "النسب", phone: "الهاتف", email: "البريد الإلكتروني",
+    addressGroup: "عنوان التوصيل", address: "عنوان التوصيل", complement: "الشقة أو الطابق أو علامة مميزة", city: "المدينة",
+    region: "الجهة", postalCode: "الرمز البريدي", country: "البلد", notes: "تعليمات التوصيل", optional: "اختياري",
+    pending: "جارٍ تسجيل الطلب…", submit: dictionary.checkout.submit, invalid: "يرجى تصحيح الحقول المشار إليها.",
+    empty: dictionary.cart.empty, viewCollection: "عرض المجموعة", backCart: "العودة إلى السلة",
+  } : {
+    heading: "Livraison", eyebrow: "Finaliser votre achat", intro: "Nous les utiliserons uniquement pour préparer et livrer cette commande.",
+    contact: "Vos coordonnées", firstName: "Prénom", lastName: "Nom", phone: "Téléphone", email: "E-mail",
+    addressGroup: "Adresse de livraison", address: "Adresse de livraison", complement: "Appartement, étage ou repère", city: "Ville",
+    region: "Région", postalCode: "Code postal", country: "Pays", notes: "Instructions de livraison", optional: "Facultatif",
+    pending: "Commande en cours…", submit: "Confirmer ma commande", invalid: "Veuillez corriger les champs indiqués.",
+    empty: "Votre panier est vide.", viewCollection: "Voir la collection", backCart: "Retour au panier",
+  };
   const { dispatch, hydrated, itemCount, items, totalDh } = useCart();
   const router = useRouter();
   const [fields, setFields] = useState(initialFields);
@@ -40,12 +59,12 @@ export function CheckoutForm() {
   const [navigationFailed, setNavigationFailed] = useState(false);
   const submitLocked = useRef(false);
 
-  if (!hydrated) return <div className="cart-status" role="status">Chargement de votre commande…</div>;
+  if (!hydrated) return <div className="cart-status" role="status">{dictionary.common.loading}</div>;
   if (completedOrderNumber) {
-    const confirmationHref = `/commande/${completedOrderNumber}`;
+    const confirmationHref = localizePath(`/commande/${completedOrderNumber}`, locale);
     return <section className="cart-empty checkout-handoff" aria-live="polite"><p className="eyebrow">Commande enregistrée</p><h1>Votre commande est confirmée.</h1><p>Numéro de commande <strong>{completedOrderNumber}</strong></p>{navigationFailed && <p>La navigation automatique n’a pas abouti. Votre commande est bien enregistrée&nbsp;: utilisez le lien ci-dessous pour afficher sa confirmation.</p>}<Link className="primary-link" href={confirmationHref}>Voir la confirmation de commande</Link></section>;
   }
-  if (items.length === 0) return <section className="cart-empty"><p className="eyebrow">Votre commande</p><h1>Votre panier est vide.</h1><p>Ajoutez une paire à votre panier avant de passer commande.</p><div className="empty-actions"><Link className="primary-link" href="/">Voir la collection</Link><Link className="secondary-link" href="/panier">Retour au panier</Link></div></section>;
+  if (items.length === 0) return <section className="cart-empty"><p className="eyebrow">{dictionary.checkout.summary}</p><h1>{labels.empty}</h1><div className="empty-actions"><Link className="primary-link" href={localizePath("/", locale)}>{labels.viewCollection}</Link><Link className="secondary-link" href={localizePath("/panier", locale)}>{labels.backCart}</Link></div></section>;
 
   const actionItems = items.map(({ variantId, quantity }) => ({ variantId, quantity }));
 
@@ -55,7 +74,8 @@ export function CheckoutForm() {
     submitLocked.current = true;
     setFormError("");
     setFieldErrors({});
-    const parsed = checkoutSchema.safeParse({ ...fields, items: actionItems });
+    const localizedInput = locale === "ar" ? { ...fields, items: actionItems, locale } : { ...fields, items: actionItems };
+    const parsed = checkoutSchema.safeParse(localizedInput);
     if (!parsed.success) {
       const flattened = parsed.error.flatten().fieldErrors;
       setFieldErrors({
@@ -65,14 +85,14 @@ export function CheckoutForm() {
         region: flattened.region?.[0], postalCode: flattened.postalCode?.[0],
         country: flattened.country?.[0], deliveryNotes: flattened.deliveryNotes?.[0],
       });
-      setFormError("Veuillez corriger les champs indiqués.");
+      setFormError(labels.invalid);
       submitLocked.current = false;
       return;
     }
     setPending(true);
     let succeeded = false;
     try {
-      const result = await createOrderAction({ ...fields, items: actionItems });
+      const result = await createOrderAction(localizedInput);
       if (!result.ok) {
         if (result.code === "INVALID" && result.fieldErrors) {
           setFieldErrors({
@@ -91,7 +111,7 @@ export function CheckoutForm() {
       succeeded = true;
       dispatch({ type: "clear" });
       try {
-        router.push(`/commande/${result.number}`);
+        router.push(localizePath(`/commande/${result.number}`, locale));
       } catch {
         setNavigationFailed(true);
       }
@@ -110,45 +130,45 @@ export function CheckoutForm() {
 
   return <div className="checkout-layout">
     <section className="checkout-panel" aria-labelledby="checkout-title">
-      <p className="eyebrow">Finaliser votre achat</p><h1 id="checkout-title">Livraison</h1>
-      <p className="checkout-intro">Nous les utiliserons uniquement pour préparer et livrer cette commande.</p>
+      <p className="eyebrow">{labels.eyebrow}</p><h1 id="checkout-title">{labels.heading}</h1>
+      <p className="checkout-intro">{labels.intro}</p>
       <form onSubmit={submit} noValidate aria-busy={pending}>
         {formError && <div className="form-error-summary" role="alert" aria-live="assertive">{formError}</div>}
-        <fieldset className="checkout-fieldset"><legend>Vos coordonnées</legend><div className="checkout-fields">
-          <CheckoutField label="Prénom" name="firstName" autoComplete="given-name" value={fields.firstName} error={fieldErrors.firstName} onChange={field} />
-          <CheckoutField label="Nom" name="lastName" autoComplete="family-name" value={fields.lastName} error={fieldErrors.lastName} onChange={field} />
-          <CheckoutField label="Téléphone" name="phone" autoComplete="tel" inputMode="tel" value={fields.phone} error={fieldErrors.phone} onChange={field} />
-          <CheckoutField label="E-mail" name="email" autoComplete="email" inputMode="email" value={fields.email} error={fieldErrors.email} onChange={field} optional />
+        <fieldset className="checkout-fieldset"><legend>{labels.contact}</legend><div className="checkout-fields">
+          <CheckoutField label={labels.firstName} name="firstName" autoComplete="given-name" value={fields.firstName} error={fieldErrors.firstName} onChange={field} />
+          <CheckoutField label={labels.lastName} name="lastName" autoComplete="family-name" value={fields.lastName} error={fieldErrors.lastName} onChange={field} />
+          <CheckoutField label={labels.phone} name="phone" autoComplete="tel" inputMode="tel" value={fields.phone} error={fieldErrors.phone} onChange={field} />
+          <CheckoutField label={labels.email} name="email" autoComplete="email" inputMode="email" value={fields.email} error={fieldErrors.email} onChange={field} optional optionalLabel={labels.optional} />
         </div></fieldset>
-        <fieldset className="checkout-fieldset"><legend>Adresse de livraison</legend><div className="checkout-fields">
-          <CheckoutField label="Adresse de livraison" name="address" autoComplete="street-address" value={fields.address} error={fieldErrors.address} onChange={field} multiline />
-          <CheckoutField label="Appartement, étage ou repère" name="addressComplement" autoComplete="address-line2" value={fields.addressComplement} error={fieldErrors.addressComplement} onChange={field} optional />
-          <CheckoutField label="Ville" name="city" autoComplete="address-level2" value={fields.city} error={fieldErrors.city} onChange={field} />
-          <CheckoutField label="Région" name="region" autoComplete="address-level1" value={fields.region} error={fieldErrors.region} onChange={field} />
-          <CheckoutField label="Code postal" name="postalCode" autoComplete="postal-code" inputMode="numeric" value={fields.postalCode} error={fieldErrors.postalCode} onChange={field} optional />
-          <CheckoutField label="Pays" name="country" autoComplete="country-name" value={fields.country} error={fieldErrors.country} onChange={field} readOnly />
-          <CheckoutField label="Instructions de livraison" name="deliveryNotes" autoComplete="off" value={fields.deliveryNotes} error={fieldErrors.deliveryNotes} onChange={field} multiline optional />
+        <fieldset className="checkout-fieldset"><legend>{labels.addressGroup}</legend><div className="checkout-fields">
+          <CheckoutField label={labels.address} name="address" autoComplete="street-address" value={fields.address} error={fieldErrors.address} onChange={field} multiline />
+          <CheckoutField label={labels.complement} name="addressComplement" autoComplete="address-line2" value={fields.addressComplement} error={fieldErrors.addressComplement} onChange={field} optional optionalLabel={labels.optional} />
+          <CheckoutField label={labels.city} name="city" autoComplete="address-level2" value={fields.city} error={fieldErrors.city} onChange={field} />
+          <CheckoutField label={labels.region} name="region" autoComplete="address-level1" value={fields.region} error={fieldErrors.region} onChange={field} />
+          <CheckoutField label={labels.postalCode} name="postalCode" autoComplete="postal-code" inputMode="numeric" value={fields.postalCode} error={fieldErrors.postalCode} onChange={field} optional optionalLabel={labels.optional} />
+          <CheckoutField label={labels.country} name="country" autoComplete="country-name" value={fields.country} error={fieldErrors.country} onChange={field} readOnly />
+          <CheckoutField label={labels.notes} name="deliveryNotes" autoComplete="off" value={fields.deliveryNotes} error={fieldErrors.deliveryNotes} onChange={field} multiline optional optionalLabel={labels.optional} />
         </div></fieldset>
-        <button className="checkout-submit" type="submit" disabled={pending}>{pending ? <LoadingLabel>Commande en cours…</LoadingLabel> : "Confirmer ma commande"}</button>
-        <p className="submit-note">Aucun paiement en ligne — vous réglerez à la livraison.</p>
+        <button className="checkout-submit" type="submit" disabled={pending}>{pending ? <LoadingLabel>{labels.pending}</LoadingLabel> : labels.submit}</button>
+        <p className="submit-note">{dictionary.checkout.paymentNote}</p>
       </form>
     </section>
-    <aside className="checkout-summary" aria-label="Récapitulatif de la commande">
-      <h2>Récapitulatif</h2>
-      <div className="checkout-items">{items.map((item) => <div className="checkout-item" key={item.variantId}><div><strong>{item.productName}</strong><span>{item.color} · Pointure {item.size} · Quantité {item.quantity}</span></div><span>{formatPriceDh(item.unitPriceDh * item.quantity)}</span></div>)}</div>
-      <div className="checkout-total"><span>Total · {itemCount} {itemCount > 1 ? "articles" : "article"}</span><strong>{formatPriceDh(totalDh)}</strong></div>
-      <div className="delivery-payment"><span aria-hidden="true">✓</span><div><strong>Paiement à la livraison</strong><p>Réglez votre commande lors de sa réception.</p></div></div>
+    <aside className="checkout-summary" aria-label={locale === "fr" ? "Récapitulatif de la commande" : dictionary.checkout.summary}>
+      <h2>{dictionary.cart.summary}</h2>
+      <div className="checkout-items">{items.map((item) => <div className="checkout-item" key={item.variantId}><div><strong>{item.productName}</strong><span>{dictionary.colors[item.color] ?? item.color} · {dictionary.product.size} {item.size} · {dictionary.cart.quantity} {item.quantity}</span></div><span>{formatPriceDh(item.unitPriceDh * item.quantity)}</span></div>)}</div>
+      <div className="checkout-total"><span>{dictionary.checkout.total} · {itemCount} {itemCount > 1 ? dictionary.common.products : dictionary.common.product}</span><strong>{formatPriceDh(totalDh)}</strong></div>
+      <div className="delivery-payment"><span aria-hidden="true">✓</span><div><strong>{dictionary.checkout.payment}</strong><p>{dictionary.checkout.paymentNote}</p></div></div>
     </aside>
   </div>;
 }
 
-function CheckoutField({ label, name, autoComplete, value, error, onChange, inputMode, multiline = false, optional = false, readOnly = false }: {
+function CheckoutField({ label, name, autoComplete, value, error, onChange, inputMode, multiline = false, optional = false, optionalLabel = "Facultatif", readOnly = false }: {
   label: string; name: FieldName; autoComplete: string; value: string; error?: string;
   onChange: (name: FieldName, value: string) => void; inputMode?: "tel" | "email" | "numeric";
-  multiline?: boolean; optional?: boolean; readOnly?: boolean;
+  multiline?: boolean; optional?: boolean; optionalLabel?: string; readOnly?: boolean;
 }) {
   const errorId = `${name}-error`;
   const common = { id: name, name, autoComplete, value, required: !optional, readOnly, "aria-invalid": Boolean(error), "aria-describedby": error ? errorId : undefined, onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(name, event.currentTarget.value) };
   const type = name === "phone" ? "tel" : name === "email" ? "email" : "text";
-  return <div className={`form-field${multiline ? " form-field-wide" : ""}`}><label htmlFor={name}>{label}{optional ? <span>Facultatif</span> : null}</label>{multiline ? <textarea {...common} rows={name === "deliveryNotes" ? 3 : 4} /> : <input {...common} inputMode={inputMode} type={type} />}{error && <p className="field-error" id={errorId}>{error}</p>}</div>;
+  return <div className={`form-field${multiline ? " form-field-wide" : ""}`}><label htmlFor={name}>{label}{optional ? <span>{optionalLabel}</span> : null}</label>{multiline ? <textarea {...common} rows={name === "deliveryNotes" ? 3 : 4} /> : <input {...common} inputMode={inputMode} type={type} />}{error && <p className="field-error" id={errorId}>{error}</p>}</div>;
 }
