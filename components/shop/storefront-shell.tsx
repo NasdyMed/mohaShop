@@ -13,7 +13,7 @@ export function StorefrontShell({ children, locale }: { children: React.ReactNod
       <header className="site-header shell">
         <Link className="brand" href={localizePath("/", locale)}>Maison Botte</Link>
         <nav className="header-nav" aria-label={locale === "ar" ? "التنقل الرئيسي" : "Navigation principale"}>
-          <Link href={localizePath("/#collection", locale)}>{dictionary.navigation.collection}</Link>
+          <Link className="touch-link" href={localizePath("/#collection", locale)}>{dictionary.navigation.collection}</Link>
           <CartLink locale={locale} />
           <LanguageSwitcher locale={locale} />
         </nav>

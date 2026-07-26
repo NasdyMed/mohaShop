@@ -31,6 +31,13 @@ const failureMessages = {
   UNKNOWN: "Une erreur inattendue est survenue. Veuillez réessayer.",
 } as const;
 
+const failureMessagesAr = {
+  INVALID: "بعض المعلومات غير صالحة.",
+  OUT_OF_STOCK: "أحد المنتجات لم يعد متوفراً بالكمية المطلوبة.",
+  RATE_LIMITED: "تمت محاولات كثيرة. يرجى المحاولة بعد بضع دقائق.",
+  UNKNOWN: "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.",
+} as const;
+
 export function CheckoutForm() {
   const { locale, dictionary } = useStorefrontI18n();
   const ar = locale === "ar";
@@ -58,11 +65,14 @@ export function CheckoutForm() {
   const [completedOrderNumber, setCompletedOrderNumber] = useState<string | null>(null);
   const [navigationFailed, setNavigationFailed] = useState(false);
   const submitLocked = useRef(false);
+  const localizedFailureMessages = ar ? failureMessagesAr : failureMessages;
+  const displayFieldError = (error?: string) =>
+    ar && error ? "يرجى التحقق من هذا الحقل." : error;
 
   if (!hydrated) return <div className="cart-status" role="status">{dictionary.common.loading}</div>;
   if (completedOrderNumber) {
     const confirmationHref = localizePath(`/commande/${completedOrderNumber}`, locale);
-    return <section className="cart-empty checkout-handoff" aria-live="polite"><p className="eyebrow">Commande enregistrée</p><h1>Votre commande est confirmée.</h1><p>Numéro de commande <strong>{completedOrderNumber}</strong></p>{navigationFailed && <p>La navigation automatique n’a pas abouti. Votre commande est bien enregistrée&nbsp;: utilisez le lien ci-dessous pour afficher sa confirmation.</p>}<Link className="primary-link" href={confirmationHref}>Voir la confirmation de commande</Link></section>;
+    return <section className="cart-empty checkout-handoff" aria-live="polite"><p className="eyebrow">{ar ? "تم تسجيل الطلب" : "Commande enregistrée"}</p><h1>{ar ? "تم تأكيد طلبك." : "Votre commande est confirmée."}</h1><p>{ar ? "رقم الطلب" : "Numéro de commande"} <strong>{completedOrderNumber}</strong></p>{navigationFailed && <p>{ar ? "تعذر الانتقال تلقائياً. طلبك مسجل، استخدم الرابط أدناه لعرض التأكيد." : "La navigation automatique n’a pas abouti. Votre commande est bien enregistrée : utilisez le lien ci-dessous pour afficher sa confirmation."}</p>}<Link className="primary-link" href={confirmationHref}>{ar ? "عرض تأكيد الطلب" : "Voir la confirmation de commande"}</Link></section>;
   }
   if (items.length === 0) return <section className="cart-empty"><p className="eyebrow">{dictionary.checkout.summary}</p><h1>{labels.empty}</h1><div className="empty-actions"><Link className="primary-link" href={localizePath("/", locale)}>{labels.viewCollection}</Link><Link className="secondary-link" href={localizePath("/panier", locale)}>{labels.backCart}</Link></div></section>;
 
@@ -104,7 +114,7 @@ export function CheckoutForm() {
             deliveryNotes: result.fieldErrors.deliveryNotes?.[0],
           });
         }
-        setFormError(failureMessages[result.code]);
+        setFormError(localizedFailureMessages[result.code]);
         return;
       }
       setCompletedOrderNumber(result.number);
@@ -116,7 +126,7 @@ export function CheckoutForm() {
         setNavigationFailed(true);
       }
     } catch {
-      setFormError(failureMessages.UNKNOWN);
+      setFormError(localizedFailureMessages.UNKNOWN);
     } finally {
       if (!succeeded) submitLocked.current = false;
       setPending(false);
@@ -135,19 +145,19 @@ export function CheckoutForm() {
       <form onSubmit={submit} noValidate aria-busy={pending}>
         {formError && <div className="form-error-summary" role="alert" aria-live="assertive">{formError}</div>}
         <fieldset className="checkout-fieldset"><legend>{labels.contact}</legend><div className="checkout-fields">
-          <CheckoutField label={labels.firstName} name="firstName" autoComplete="given-name" value={fields.firstName} error={fieldErrors.firstName} onChange={field} />
-          <CheckoutField label={labels.lastName} name="lastName" autoComplete="family-name" value={fields.lastName} error={fieldErrors.lastName} onChange={field} />
-          <CheckoutField label={labels.phone} name="phone" autoComplete="tel" inputMode="tel" value={fields.phone} error={fieldErrors.phone} onChange={field} />
-          <CheckoutField label={labels.email} name="email" autoComplete="email" inputMode="email" value={fields.email} error={fieldErrors.email} onChange={field} optional optionalLabel={labels.optional} />
+          <CheckoutField label={labels.firstName} name="firstName" autoComplete="given-name" value={fields.firstName} error={displayFieldError(fieldErrors.firstName)} onChange={field} />
+          <CheckoutField label={labels.lastName} name="lastName" autoComplete="family-name" value={fields.lastName} error={displayFieldError(fieldErrors.lastName)} onChange={field} />
+          <CheckoutField label={labels.phone} name="phone" autoComplete="tel" inputMode="tel" value={fields.phone} error={displayFieldError(fieldErrors.phone)} onChange={field} />
+          <CheckoutField label={labels.email} name="email" autoComplete="email" inputMode="email" value={fields.email} error={displayFieldError(fieldErrors.email)} onChange={field} optional optionalLabel={labels.optional} />
         </div></fieldset>
         <fieldset className="checkout-fieldset"><legend>{labels.addressGroup}</legend><div className="checkout-fields">
-          <CheckoutField label={labels.address} name="address" autoComplete="street-address" value={fields.address} error={fieldErrors.address} onChange={field} multiline />
-          <CheckoutField label={labels.complement} name="addressComplement" autoComplete="address-line2" value={fields.addressComplement} error={fieldErrors.addressComplement} onChange={field} optional optionalLabel={labels.optional} />
-          <CheckoutField label={labels.city} name="city" autoComplete="address-level2" value={fields.city} error={fieldErrors.city} onChange={field} />
-          <CheckoutField label={labels.region} name="region" autoComplete="address-level1" value={fields.region} error={fieldErrors.region} onChange={field} />
-          <CheckoutField label={labels.postalCode} name="postalCode" autoComplete="postal-code" inputMode="numeric" value={fields.postalCode} error={fieldErrors.postalCode} onChange={field} optional optionalLabel={labels.optional} />
-          <CheckoutField label={labels.country} name="country" autoComplete="country-name" value={fields.country} error={fieldErrors.country} onChange={field} readOnly />
-          <CheckoutField label={labels.notes} name="deliveryNotes" autoComplete="off" value={fields.deliveryNotes} error={fieldErrors.deliveryNotes} onChange={field} multiline optional optionalLabel={labels.optional} />
+          <CheckoutField label={labels.address} name="address" autoComplete="street-address" value={fields.address} error={displayFieldError(fieldErrors.address)} onChange={field} multiline />
+          <CheckoutField label={labels.complement} name="addressComplement" autoComplete="address-line2" value={fields.addressComplement} error={displayFieldError(fieldErrors.addressComplement)} onChange={field} optional optionalLabel={labels.optional} />
+          <CheckoutField label={labels.city} name="city" autoComplete="address-level2" value={fields.city} error={displayFieldError(fieldErrors.city)} onChange={field} />
+          <CheckoutField label={labels.region} name="region" autoComplete="address-level1" value={fields.region} error={displayFieldError(fieldErrors.region)} onChange={field} />
+          <CheckoutField label={labels.postalCode} name="postalCode" autoComplete="postal-code" inputMode="numeric" value={fields.postalCode} error={displayFieldError(fieldErrors.postalCode)} onChange={field} optional optionalLabel={labels.optional} />
+          <CheckoutField label={labels.country} name="country" autoComplete="country-name" value={fields.country} error={displayFieldError(fieldErrors.country)} onChange={field} readOnly />
+          <CheckoutField label={labels.notes} name="deliveryNotes" autoComplete="off" value={fields.deliveryNotes} error={displayFieldError(fieldErrors.deliveryNotes)} onChange={field} multiline optional optionalLabel={labels.optional} />
         </div></fieldset>
         <button className="checkout-submit" type="submit" disabled={pending}>{pending ? <LoadingLabel>{labels.pending}</LoadingLabel> : labels.submit}</button>
         <p className="submit-note">{dictionary.checkout.paymentNote}</p>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { alternateLocalePath, isLocale, localizePath } from "@/lib/i18n/config";
+import { alternateLocalePath, isLocale, localeFromPath, localizePath } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 
 describe("storefront i18n", () => {
@@ -8,6 +8,12 @@ describe("storefront i18n", () => {
     expect(isLocale("fr")).toBe(true);
     expect(isLocale("ar")).toBe(true);
     expect(isLocale("en")).toBe(false);
+  });
+
+  it("déduit la langue du document depuis la route sans localiser l'admin", () => {
+    expect(localeFromPath("/ar/produits/atlas")).toBe("ar");
+    expect(localeFromPath("/admin")).toBe("fr");
+    expect(localeFromPath("/produits/atlas")).toBe("fr");
   });
 
   it("préfixe uniquement les routes publiques arabes", () => {

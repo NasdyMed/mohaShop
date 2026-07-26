@@ -7,7 +7,6 @@ import { alternateLocalePath, type Locale } from "@/lib/i18n/config";
 
 export function LanguageSwitcher({ locale }: { locale: Locale }) {
   const pathname = usePathname();
-  const targetLocale: Locale = locale === "fr" ? "ar" : "fr";
   const selectLocale = (nextLocale: Locale) => {
     document.cookie = `storefront-locale=${nextLocale}; Path=/; Max-Age=31536000; SameSite=Lax`;
   };

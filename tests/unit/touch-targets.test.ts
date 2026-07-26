@@ -6,7 +6,7 @@ const read = (path: string) => readFileSync(join(process.cwd(), path), "utf8");
 
 describe("storefront touch targets", () => {
   it("marks compact navigation and confirmation links as touch actions", () => {
-    expect(read("app/(shop)/commander/page.tsx")).toContain('className="touch-link"');
+    expect(read("components/shop/storefront-shell.tsx")).toContain('className="touch-link"');
     expect(read("components/cart/cart-link.tsx")).toContain('className="touch-link"');
     expect(read("components/cart/add-to-cart.tsx")).toContain('className="touch-link"');
   });

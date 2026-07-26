@@ -5,6 +5,10 @@ export function isLocale(value: string): value is Locale {
   return locales.includes(value as Locale);
 }
 
+export function localeFromPath(pathname: string): Locale {
+  return pathname === "/ar" || pathname.startsWith("/ar/") ? "ar" : "fr";
+}
+
 function isPrivatePath(pathname: string) {
   return pathname === "/admin" || pathname.startsWith("/admin/") || pathname === "/api" || pathname.startsWith("/api/");
 }
