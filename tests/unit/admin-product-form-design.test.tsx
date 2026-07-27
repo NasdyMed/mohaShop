@@ -70,12 +70,10 @@ describe("Impeccable admin product form", () => {
   it("remplace le texte libre de couleur par une palette de pastilles", async () => {
     const user = userEvent.setup();
     render(<ProductForm />);
-    await user.click(screen.getByRole("button", { name: /ajouter une déclinaison/i }));
-
     expect(screen.queryByRole("textbox", { name: "Couleur" })).not.toBeInTheDocument();
-    const noir = screen.getByRole("radio", { name: "Noir" });
-    const cognac = screen.getByRole("radio", { name: "Cognac" });
-    expect(noir).toBeChecked();
+    const noir = screen.getByRole("checkbox", { name: "Noir" });
+    const cognac = screen.getByRole("checkbox", { name: "Cognac" });
+    expect(noir).not.toBeChecked();
     expect(cognac).not.toBeChecked();
 
     await user.click(cognac);
@@ -85,7 +83,7 @@ describe("Impeccable admin product form", () => {
   it("migre une ancienne couleur libre vers la palette fixe", () => {
     render(<ProductForm initialValue={{ ...product, variants: [{ ...product.variants[0], color: "Brun" }] }} />);
 
-    expect(within(screen.getByRole("group", { name: "Déclinaisons" })).getByRole("radio", { name: "Marron" })).toBeChecked();
+    expect(within(screen.getByRole("group", { name: "Déclinaisons" })).getByRole("checkbox", { name: "Marron" })).toBeChecked();
   });
 
   it("repasse automatiquement en brouillon si la dernière image est supprimée", async () => {

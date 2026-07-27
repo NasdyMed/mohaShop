@@ -1,4 +1,12 @@
-import type { EditableVariant } from "@/components/admin/variant-editor";
+export type EditableVariant = {
+  id?: string;
+  sku: string;
+  size: string;
+  color: string;
+  stock: number;
+  historical?: boolean;
+  removed?: boolean;
+};
 
 export const productSizes = [
   "35",

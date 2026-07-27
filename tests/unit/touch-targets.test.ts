@@ -33,6 +33,12 @@ describe("storefront touch targets", () => {
     expect(css).toMatch(/\.admin-hero-publication\s+\.admin-switch\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;[^}]*justify-content:\s*center;/s);
   });
 
+  it("gives variant color and size choices a 44 pixel target", () => {
+    const css = read("app/globals.css");
+    expect(css).toMatch(/\.variant-matrix-color[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/s);
+    expect(css).toMatch(/\.variant-matrix-size[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/s);
+  });
+
   it("keeps the admin navigation on screen at 320 pixels", () => {
     const css = read("app/globals.css");
     expect(css).toMatch(/@media\s*\(max-width:\s*620px\)\s*\{[^}]*\.admin-header\s*\{[^}]*flex-wrap:\s*wrap;/s);

@@ -746,3 +746,40 @@ html { scroll-behavior: smooth; }
   .admin-hero-upload-button, .admin-hero-savebar .admin-submit { width: 100%; min-width: 0; }
   .admin-hero-savebar { position: static; }
 }
+
+/* Impeccable admin variant stock matrix */
+.variant-matrix-editor { padding: 24px; background: var(--admin-surface); }
+.variant-choice-group { margin: 0; padding: 0; border: 0; }
+.variant-choice-group > legend { margin-bottom: 10px; color: var(--admin-text); font-size: .76rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.variant-color-grid, .variant-size-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.variant-matrix-color { min-width: 44px; min-height: 44px; position: relative; display: inline-flex; align-items: center; gap: 8px; padding: 7px 11px; border: 1px solid var(--admin-border); background: #fff; cursor: pointer; }
+.variant-matrix-size { min-width: 44px; min-height: 44px; position: relative; display: grid; place-items: center; border: 1px solid var(--admin-border); background: #fff; cursor: pointer; }
+.variant-matrix-color input, .variant-matrix-size input { position: absolute; opacity: 0; pointer-events: none; }
+.variant-swatch { width: 22px; height: 22px; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px #8b7b6c; }
+.variant-matrix-color:has(input:checked), .variant-matrix-size:has(input:checked) { color: #fff; border-color: var(--admin-secondary); background: var(--admin-secondary); }
+.variant-matrix-color:has(input:focus-visible), .variant-matrix-size:has(input:focus-visible) { outline: 3px solid rgba(204,136,0,.42); outline-offset: 2px; }
+.variant-matrix-color:has(input:disabled), .variant-matrix-size:has(input:disabled) { opacity: .45; cursor: not-allowed; }
+.variant-stock-scroll { max-width: 100%; overflow-x: auto; border: 1px solid var(--admin-border); }
+.variant-stock-table { width: 100%; min-width: 620px; border-collapse: collapse; background: #fff; }
+.variant-stock-table th, .variant-stock-table td { padding: 10px; border: 1px solid #eadfd5; text-align: center; }
+.variant-stock-table th { position: sticky; top: 0; background: #f8f1e7; }
+.variant-stock-table tbody th { left: 0; z-index: 1; text-align: left; }
+.variant-stock-table input { width: 82px; min-height: 44px; padding: 8px; text-align: center; }
+.variant-stock-table input[aria-invalid="true"], .variant-sku-details input[aria-invalid="true"] { border-color: var(--admin-danger); background: #fff5f3; }
+.variant-matrix-empty { margin: 0; padding: 24px; border: 1px dashed #bca999; background: #fffaf3; text-align: center; }
+.variant-sku-details { padding: 14px; border: 1px solid var(--admin-border); background: #fff; }
+.variant-sku-details summary { min-height: 44px; display: flex; align-items: center; font-weight: 800; cursor: pointer; }
+.variant-sku-details > div { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; padding-top: 12px; }
+.variant-history { margin: 0; padding: 12px; border-left: 4px solid var(--admin-warning); background: #fff5d8; }
+.variant-dialog-overlay { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(23,19,16,.62); }
+.variant-dialog { width: min(520px,100%); padding: 28px; border-top: 6px solid var(--admin-secondary); background: var(--admin-surface); box-shadow: 0 24px 70px rgba(0,0,0,.28); }
+.variant-dialog h2 { margin: 0 0 12px; font-size: 2rem; }
+.variant-dialog p { color: var(--muted); line-height: 1.6; }
+.variant-dialog > div { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+.variant-dialog button { padding-inline: 18px; }
+@media (max-width: 620px) {
+  .variant-matrix-editor { padding: 18px 14px; }
+  .variant-matrix-color { flex: 1 1 calc(50% - 8px); }
+  .variant-sku-details > div { grid-template-columns: 1fr; }
+  .variant-dialog > div { align-items: stretch; flex-direction: column-reverse; }
+}

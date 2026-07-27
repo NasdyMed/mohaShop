@@ -37,8 +37,9 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
   const operationLock = useRef(false);
   const [message, setMessage] = useState("");
   const [errors, setErrors] = useState<Errors>({});
-  const canPublish = value.images.length > 0 && value.variants.length > 0;
-  const colors = [...new Set(value.variants.map((variant) => variant.color))];
+  const activeVariants = value.variants.filter((variant) => !variant.removed);
+  const canPublish = value.images.length > 0 && activeVariants.length > 0;
+  const colors = [...new Set(activeVariants.map((variant) => variant.color))];
 
   const move = (index: number, delta: number) => {
     const target = index + delta;
@@ -79,7 +80,13 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
     setMessage("");
     setErrors({});
     try {
-      const result = await saveProductAction({ ...value, variants: value.variants.map(({ id, sku, size, color, stock }) => ({ ...(id ? { id } : {}), sku, size, color, stock })) });
+      const variants = value.variants
+        .filter((variant) => !variant.removed || variant.historical)
+        .map(({ id, sku, size, color, stock, removed }) => ({
+          ...(id ? { id } : {}),
+          sku, size, color, stock: removed ? 0 : stock,
+        }));
+      const result = await saveProductAction({ ...value, variants });
       if (!result.ok) {
         setMessage(result.message);
         setErrors(result.fieldErrors);
@@ -116,11 +123,14 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
       {!canPublish && <p className="admin-inline-note">Ajoutez une image et une déclinaison pour publier. Le brouillon reste enregistrable.</p>}
     </section>
 
-    <VariantEditor value={value.variants} onChange={(variants) => {
-      const availableColors = new Set(variants.map((variant) => variant.color));
-      const fallbackColor = variants[0]?.color ?? null;
-      setValue({ ...value, variants, images: value.images.map((image) => ({ ...image, color: image.color && availableColors.has(image.color) ? image.color : fallbackColor })), isVisible: value.isVisible && variants.length > 0 && value.images.length > 0 });
-    }} disabled={busy} errors={errors}/>
+    <VariantEditor productSlug={value.slug} value={value.variants} onChange={(variants) => {
+      const hasActiveVariants = variants.some((variant) => !variant.removed);
+      setValue({ ...value, variants, isVisible: value.isVisible && hasActiveVariants && value.images.length > 0 });
+    }} disabled={busy} errors={errors} protectedColors={new Set(value.images.flatMap((image) => image.color ? [image.color] : []))}
+      onConfirmedColorRemoval={(color) => setValue((current) => ({
+        ...current,
+        images: current.images.filter((image) => image.color !== color).map((image, position) => ({ ...image, position })),
+      }))}/>
 
     <section className="admin-form-card" aria-labelledby="product-images-title">
       <div className="admin-section-heading"><div><span className="admin-section-index">03</span><h2 id="product-images-title">Images</h2></div><p>La première image devient la couverture du produit.</p></div>
