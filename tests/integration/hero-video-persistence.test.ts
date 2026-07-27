@@ -14,11 +14,11 @@ async function cleanup() {
 
 beforeAll(async () => {
   const configured = process.env.TEST_DATABASE_URL;
-  const requirement = "TEST_DATABASE_URL doit cibler une base PostgreSQL isolée dont le nom contient « test ».";
+  const requirement = "TEST_DATABASE_URL doit cibler une base PostgreSQL isolée nommée « test » ou dont le nom finit par « _test ».";
   if (!configured) throw new Error(`Integration precondition: ${requirement}`);
   const parsed = new URL(configured);
   const database = decodeURIComponent(parsed.pathname.slice(1));
-  if (!["postgres:", "postgresql:"].includes(parsed.protocol) || !/test/i.test(database)) {
+  if (!["postgres:", "postgresql:"].includes(parsed.protocol) || !/(?:^|_)test$/i.test(database)) {
     throw new Error(`Refusing integration test: ${requirement}`);
   }
   process.env.DATABASE_URL = configured;
@@ -45,5 +45,13 @@ describe.sequential("hero video admin persistence", () => {
       { id: created[0].id, position: 1, isVisible: true },
       { id: created[1].id, position: 2, isVisible: false },
     ]);
+  });
+  it("sérialise deux réordonnancements concurrents sans positions dupliquées", async () => {
+    const current = (await mutations.listAdminHeroVideos()).filter(({ title }) => title.startsWith(prefix));
+    const forward = current.map((video) => ({ ...video }));
+    const reverse = [...forward].reverse();
+    await Promise.all([mutations.updateHeroVideos(forward), mutations.updateHeroVideos(reverse)]);
+    const saved = (await mutations.listAdminHeroVideos()).filter(({ title }) => title.startsWith(prefix));
+    expect(saved.map(({ position }) => position).sort((a, b) => a - b)).toEqual([0, 1, 2]);
   });
 });

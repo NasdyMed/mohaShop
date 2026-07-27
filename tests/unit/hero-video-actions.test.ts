@@ -6,7 +6,8 @@ const mocks = vi.hoisted(() => ({
   randomUUID: vi.fn(() => "12345678-1234-4234-8234-123456789abc"),
   create: vi.fn(),
   update: vi.fn(),
-  remove: vi.fn(),
+  markForDeletion: vi.fn(),
+  finalizeDeletion: vi.fn(),
   del: vi.fn(),
   revalidatePath: vi.fn(),
 }));
@@ -17,7 +18,8 @@ vi.mock("node:crypto", async (original) => ({ ...(await original<typeof import("
 vi.mock("@/lib/hero/admin-mutations", () => ({
   createHeroVideo: mocks.create,
   updateHeroVideos: mocks.update,
-  removeHeroVideo: mocks.remove,
+  markHeroVideoForDeletion: mocks.markForDeletion,
+  finalizeHeroVideoDeletion: mocks.finalizeDeletion,
   HeroVideoMutationError: class extends Error { constructor(public code: string) { super(code); } },
 }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
@@ -66,7 +68,7 @@ describe("hero video actions", () => {
     await expect(updateHeroVideosAction("invalid")).rejects.toThrow("NEXT_REDIRECT");
     await expect(deleteHeroVideoAction("invalid")).rejects.toThrow("NEXT_REDIRECT");
     expect(mocks.update).not.toHaveBeenCalled();
-    expect(mocks.remove).not.toHaveBeenCalled();
+    expect(mocks.markForDeletion).not.toHaveBeenCalled();
   });
   it.each([
     [{ ...input, url: "http://localhost/a.mp4" }, "url"],
@@ -109,13 +111,22 @@ describe("hero video actions", () => {
     await expect(updateHeroVideosAction([{ id: "c123456789012345678901234", ...input, position: 99 }])).resolves.toMatchObject({ ok: true });
     expect(mocks.revalidatePath.mock.calls.map(([path]) => path)).toEqual(expect.arrayContaining(["/", "/ar", "/admin/hero"]));
   });
-  it("supprime la base avant Blob et masque l'erreur provider", async () => {
-    mocks.remove.mockResolvedValue({ url });
+  it("conserve la ligne masquée et masque l'erreur provider", async () => {
+    mocks.markForDeletion.mockResolvedValue({ url });
+    mocks.finalizeDeletion.mockResolvedValue(undefined);
     mocks.del.mockRejectedValue(new Error("secret token"));
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
     await expect(deleteHeroVideoAction("c123456789012345678901234")).resolves.toMatchObject({ ok: true, warning: expect.any(String) });
-    expect(mocks.remove.mock.invocationCallOrder[0]).toBeLessThan(mocks.del.mock.invocationCallOrder[0]);
+    expect(mocks.markForDeletion.mock.invocationCallOrder[0]).toBeLessThan(mocks.del.mock.invocationCallOrder[0]);
+    expect(mocks.finalizeDeletion).not.toHaveBeenCalled();
     expect(JSON.stringify(log.mock.calls)).not.toContain("secret token");
     log.mockRestore();
+  });
+  it("finalise la suppression seulement après le succès Blob", async () => {
+    mocks.markForDeletion.mockResolvedValue({ url });
+    mocks.del.mockResolvedValue(undefined);
+    await expect(deleteHeroVideoAction("c123456789012345678901234")).resolves.toEqual({ ok: true });
+    expect(mocks.del.mock.invocationCallOrder[0]).toBeLessThan(mocks.finalizeDeletion.mock.invocationCallOrder[0]);
+    expect(mocks.finalizeDeletion).toHaveBeenCalledWith("c123456789012345678901234", url);
   });
 });

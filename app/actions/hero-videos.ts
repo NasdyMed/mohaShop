@@ -3,7 +3,7 @@ import { del } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/require-admin";
-import { createHeroVideo, HeroVideoMutationError, removeHeroVideo, updateHeroVideos } from "@/lib/hero/admin-mutations";
+import { createHeroVideo, finalizeHeroVideoDeletion, HeroVideoMutationError, markHeroVideoForDeletion, updateHeroVideos } from "@/lib/hero/admin-mutations";
 import { hasVideoSignature, heroVideoInputSchema } from "@/lib/hero/validation";
 
 type FailureCode = "INVALID" | "NOT_FOUND" | "TAMPERED" | "DUPLICATE" | "REMOTE_INVALID" | "UNKNOWN";
@@ -85,9 +85,13 @@ export async function deleteHeroVideoAction(id: unknown) {
   const parsed = z.cuid().safeParse(id);
   if (!parsed.success) return failure("INVALID", { id: ["Identifiant invalide."] });
   try {
-    const { url } = await removeHeroVideo(parsed.data);
+    const { url } = await markHeroVideoForDeletion(parsed.data);
     invalidate();
-    try { await del(url); return { ok: true as const }; }
+    try {
+      await del(url);
+      await finalizeHeroVideoDeletion(parsed.data, url);
+      return { ok: true as const };
+    }
     catch { console.error("hero_video_blob_delete_failed", { category: "provider" }); return { ok: true as const, warning: "Le fichier distant n’a pas pu être supprimé." }; }
   } catch (error) { return mutationFailure(error); }
 }
