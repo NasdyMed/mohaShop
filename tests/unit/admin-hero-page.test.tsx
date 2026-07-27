@@ -144,13 +144,9 @@ describe("HeroVideoManager", () => {
     expect(screen.getByRole("article")).toBeVisible();
   });
 
-  it.each([
-    ["un refus", { ok: false, message: "La création a échoué.", fieldErrors: {} }],
-    ["une exception", new Error("db offline")],
-  ])("nettoie exactement une fois le Blob après %s de création", async (_label, outcome) => {
+  it("nettoie exactement une fois le Blob après un refus explicite de création", async () => {
     mocks.upload.mockResolvedValue({ url: "https://store.public.blob.vercel-storage.com/hero/orphan.mp4" });
-    if (outcome instanceof Error) mocks.create.mockRejectedValue(outcome);
-    else mocks.create.mockResolvedValue(outcome);
+    mocks.create.mockResolvedValue({ ok: false, message: "La création a échoué.", fieldErrors: {} });
     mocks.cleanupUpload.mockResolvedValue({ ok: true });
     render(<HeroVideoManager initialVideos={[]} />);
     fireEvent.change(screen.getByLabelText("Ajouter des vidéos"), {
@@ -159,6 +155,17 @@ describe("HeroVideoManager", () => {
     await waitFor(() => expect(mocks.cleanupUpload).toHaveBeenCalledOnce());
     expect(mocks.cleanupUpload).toHaveBeenCalledWith("https://store.public.blob.vercel-storage.com/hero/orphan.mp4");
     expect(screen.getByRole("alert")).toBeVisible();
+  });
+
+  it("ne nettoie pas le Blob si la réponse de création est perdue et peut cacher un commit réussi", async () => {
+    mocks.upload.mockResolvedValue({ url: "https://store.public.blob.vercel-storage.com/hero/referenced.mp4" });
+    mocks.create.mockRejectedValue(new Error("response lost after commit"));
+    render(<HeroVideoManager initialVideos={[]} />);
+    fireEvent.change(screen.getByLabelText("Ajouter des vidéos"), {
+      target: { files: [new File(["video"], "referenced.mp4", { type: "video/mp4" })] },
+    });
+    expect(await screen.findByRole("alert")).toHaveTextContent(/vérifiez.*administration/i);
+    expect(mocks.cleanupUpload).not.toHaveBeenCalled();
   });
 
   it("signale sans détail fournisseur un échec de nettoyage du Blob orphelin", async () => {

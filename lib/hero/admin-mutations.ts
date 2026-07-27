@@ -13,6 +13,10 @@ export async function listAdminHeroVideos(): Promise<AdminHeroVideoItem[]> {
   return db.heroVideo.findMany({ orderBy: [{ position: "asc" }, { createdAt: "asc" }] });
 }
 
+export async function findAdminHeroVideoByUrl(url: string) {
+  return db.heroVideo.findUnique({ where: { url }, select: { id: true } });
+}
+
 export async function createHeroVideo(raw: unknown) {
   const parsed = heroVideoInputSchema.safeParse(raw);
   if (!parsed.success || parsed.data.id) throw new HeroVideoMutationError("INVALID");

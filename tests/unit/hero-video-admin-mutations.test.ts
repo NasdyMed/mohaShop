@@ -14,7 +14,7 @@ vi.mock("@/lib/db", () => ({
     $transaction: mocks.transaction,
   },
 }));
-import { finalizeHeroVideoDeletion, HeroVideoMutationError, listAdminHeroVideos, markHeroVideoForDeletion, updateHeroVideos } from "@/lib/hero/admin-mutations";
+import { finalizeHeroVideoDeletion, findAdminHeroVideoByUrl, HeroVideoMutationError, listAdminHeroVideos, markHeroVideoForDeletion, updateHeroVideos } from "@/lib/hero/admin-mutations";
 
 const rows = [
   { id: "cm00000000000000000000001", url: "https://store.public.blob.vercel-storage.com/a.mp4", title: "Vidéo A", position: 0, isVisible: true, deletingAt: null },
@@ -101,5 +101,10 @@ describe("hero video admin mutations", () => {
     mocks.findMany.mockResolvedValue([rows[0], pending]);
     await expect(listAdminHeroVideos()).resolves.toEqual([rows[0], pending]);
     expect(mocks.findMany).toHaveBeenCalledWith({ orderBy: [{ position: "asc" }, { createdAt: "asc" }] });
+  });
+  it("recherche une référence Hero par URL exacte", async () => {
+    mocks.findUnique.mockResolvedValue({ id: rows[0].id });
+    await expect(findAdminHeroVideoByUrl(rows[0].url)).resolves.toEqual({ id: rows[0].id });
+    expect(mocks.findUnique).toHaveBeenCalledWith({ where: { url: rows[0].url }, select: { id: true } });
   });
 });

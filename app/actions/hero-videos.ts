@@ -3,7 +3,7 @@ import { BlobNotFoundError, del } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/require-admin";
-import { createHeroVideo, finalizeHeroVideoDeletion, HeroVideoMutationError, markHeroVideoForDeletion, updateHeroVideos } from "@/lib/hero/admin-mutations";
+import { createHeroVideo, finalizeHeroVideoDeletion, findAdminHeroVideoByUrl, HeroVideoMutationError, markHeroVideoForDeletion, updateHeroVideos } from "@/lib/hero/admin-mutations";
 import { hasVideoSignature, heroVideoInputSchema, isHeroVideoBlobUrl } from "@/lib/hero/validation";
 
 type FailureCode = "INVALID" | "NOT_FOUND" | "TAMPERED" | "DUPLICATE" | "REMOTE_INVALID" | "UNKNOWN";
@@ -75,6 +75,7 @@ export async function cleanupHeroVideoUploadAction(raw: unknown) {
   await requireAdmin();
   if (!isHeroVideoBlobUrl(raw)) return failure("INVALID");
   try {
+    if (await findAdminHeroVideoByUrl(raw)) return { ok: true as const, skipped: true as const };
     await del(raw);
     return { ok: true as const };
   } catch (error) {

@@ -159,8 +159,7 @@ export function HeroVideoManager({ initialVideos }: { initialVideos: AdminHeroVi
           });
         } catch {
           failed += 1;
-          lastError = `La création de ${file.name} a échoué.`;
-          await cleanupOrphan(blob.url);
+          lastError = `L’état de ${file.name} est incertain. Vérifiez la liste dans l’administration avant de réessayer.`;
           setFeedback({ kind: "error", text: lastError });
           continue;
         }

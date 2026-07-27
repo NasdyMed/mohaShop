@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   update: vi.fn(),
   markForDeletion: vi.fn(),
   finalizeDeletion: vi.fn(),
+  findByUrl: vi.fn(),
   del: vi.fn(),
   revalidatePath: vi.fn(),
 }));
@@ -23,6 +24,7 @@ vi.mock("@/lib/hero/admin-mutations", () => ({
   updateHeroVideos: mocks.update,
   markHeroVideoForDeletion: mocks.markForDeletion,
   finalizeHeroVideoDeletion: mocks.finalizeDeletion,
+  findAdminHeroVideoByUrl: mocks.findByUrl,
   HeroVideoMutationError: class extends Error { constructor(public code: string) { super(code); } },
 }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
@@ -58,7 +60,7 @@ describe("hero video upload route", () => {
 
 describe("hero video actions", () => {
   beforeEach(() => {
-    vi.clearAllMocks(); mocks.requireAdmin.mockResolvedValue({});
+    vi.clearAllMocks(); mocks.requireAdmin.mockResolvedValue({}); mocks.findByUrl.mockResolvedValue(null);
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(mp4, { status: 206, headers: { "content-type": "video/mp4", "content-range": `bytes 0-11/${mp4.length}` } })));
   });
   it("authentifie avant validation et IO", async () => {
@@ -93,6 +95,12 @@ describe("hero video actions", () => {
     const { BlobNotFoundError } = await import("@vercel/blob");
     mocks.del.mockRejectedValueOnce(new BlobNotFoundError());
     await expect(cleanupHeroVideoUploadAction(url)).resolves.toEqual({ ok: true });
+  });
+  it("ne supprime jamais un Blob déjà référencé en base", async () => {
+    mocks.findByUrl.mockResolvedValue({ id: "cm12345678901234567890123" });
+    await expect(cleanupHeroVideoUploadAction(url)).resolves.toEqual({ ok: true, skipped: true });
+    expect(mocks.findByUrl).toHaveBeenCalledWith(url);
+    expect(mocks.del).not.toHaveBeenCalled();
   });
   it("masque l'erreur fournisseur si le nettoyage échoue", async () => {
     mocks.del.mockRejectedValueOnce(new Error("secret provider token"));
