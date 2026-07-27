@@ -108,7 +108,7 @@ export function VariantEditor({ productSlug, value, onChange, disabled, errors =
   const update = (target: EditableVariant, patch: Partial<EditableVariant>) =>
     onChange(value.map((variant) => variant === target ? { ...variant, ...patch } : variant));
 
-  return <fieldset className="variant-editor variant-matrix-editor" disabled={disabled}>
+  return <fieldset className={`variant-editor variant-matrix-editor${disabled ? " is-disabled" : ""}`} disabled={disabled} aria-busy={disabled}>
     <legend className="visually-hidden">Déclinaisons</legend>
     <FieldError errors={errors.variants}/>
     <div className="admin-section-heading">
@@ -142,9 +142,20 @@ export function VariantEditor({ productSlug, value, onChange, disabled, errors =
           const variant = active.find((item) => variantKey(item.color, item.size) === variantKey(color, size))!;
           const index = value.indexOf(variant);
           const errorId = `variant-${index}-stock-error`;
+          const structural = [
+            [`variants.${index}`, `variant-${index}-error`],
+            [`variants.${index}.id`, `variant-${index}-id-error`],
+            [`variants.${index}.size`, `variant-${index}-size-error`],
+            [`variants.${index}.color`, `variant-${index}-color-error`],
+          ] as const;
+          const describedBy = [
+            ...structural.filter(([key]) => errors[key]).map(([, id]) => id),
+            ...(errors[`variants.${index}.stock`] ? [errorId] : []),
+          ].join(" ") || undefined;
           return <td key={size}><input type="number" min={0} max={1_000_000} step={1} aria-label={`Stock ${color}, pointure ${size}`}
-            aria-invalid={!!errors[`variants.${index}.stock`]} aria-describedby={errors[`variants.${index}.stock`] ? errorId : undefined}
+            aria-invalid={!!describedBy} aria-describedby={describedBy}
             value={variant.stock} onChange={(event) => update(variant, { stock: Math.max(0, Math.min(1_000_000, Math.trunc(Number(event.target.value)))) })}/>
+            {structural.map(([key, id]) => <FieldError key={key} id={id} errors={errors[key]}/>)}
             <FieldError id={errorId} errors={errors[`variants.${index}.stock`]}/></td>;
         })}</tr>)}</tbody>
       </table>
@@ -167,7 +178,9 @@ export function VariantEditor({ productSlug, value, onChange, disabled, errors =
         </p>)}</div>
     </details>}
     {pending && <ConfirmRemovalDialog title="Retirer cette sélection ?"
-      description="Les variantes concernées seront retirées. Les variantes liées à des commandes resteront conservées avec un stock nul."
+      description={pending.kind === "color" && protectedColors.has(pending.value)
+        ? `Les variantes concernées seront retirées et les images de la couleur ${pending.value} seront retirées du produit. Les variantes liées à des commandes resteront conservées avec un stock nul.`
+        : "Les variantes concernées seront retirées. Les variantes liées à des commandes resteront conservées avec un stock nul."}
       onCancel={cancel} onConfirm={confirm}/>}
   </fieldset>;
 }

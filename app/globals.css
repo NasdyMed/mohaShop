@@ -757,8 +757,11 @@ html { scroll-behavior: smooth; }
 .variant-matrix-color input, .variant-matrix-size input { position: absolute; opacity: 0; pointer-events: none; }
 .variant-swatch { width: 22px; height: 22px; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px #8b7b6c; }
 .variant-matrix-color:has(input:checked), .variant-matrix-size:has(input:checked) { color: #fff; border-color: var(--admin-secondary); background: var(--admin-secondary); }
+.variant-matrix-color:hover:not(:has(input:disabled)), .variant-matrix-size:hover:not(:has(input:disabled)) { border-color: var(--admin-secondary); background: #fff5ee; }
+.variant-matrix-color:hover:has(input:checked), .variant-matrix-size:hover:has(input:checked) { color: #fff; background: #9f3e18; }
 .variant-matrix-color:has(input:focus-visible), .variant-matrix-size:has(input:focus-visible) { outline: 3px solid rgba(204,136,0,.42); outline-offset: 2px; }
 .variant-matrix-color:has(input:disabled), .variant-matrix-size:has(input:disabled) { opacity: .45; cursor: not-allowed; }
+.variant-matrix-editor.is-disabled { opacity: .68; cursor: wait; }
 .variant-stock-scroll { max-width: 100%; overflow-x: auto; border: 1px solid var(--admin-border); }
 .variant-stock-table { width: 100%; min-width: 620px; border-collapse: collapse; background: #fff; }
 .variant-stock-table th, .variant-stock-table td { padding: 10px; border: 1px solid #eadfd5; text-align: center; }

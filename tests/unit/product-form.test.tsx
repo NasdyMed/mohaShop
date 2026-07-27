@@ -119,4 +119,31 @@ describe("VariantEditor through ProductForm", () => {
     await user.click(screen.getByRole("checkbox", { name: "Cognac" }));
     expect(screen.queryByRole("textbox", { name: "SKU Cognac, pointure 39" })).not.toBeInTheDocument();
   });
+
+  it("retire les images protégées après confirmation, mais jamais lors d'un retrait de pointure", async () => {
+    const user = userEvent.setup();
+    render(<ProductForm initialValue={validDraft} />);
+    await user.click(screen.getByRole("checkbox", { name: "Pointure 38" }));
+    await user.click(screen.getByRole("button", { name: "Confirmer le retrait" }));
+    expect(screen.getByRole("region", { name: "Images du produit" })).toBeVisible();
+    await user.click(screen.getByRole("checkbox", { name: "Pointure 38" }));
+    await user.click(screen.getByRole("checkbox", { name: "Noir" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent(/images.*Noir.*retirées du produit/i);
+    await user.click(screen.getByRole("button", { name: "Confirmer le retrait" }));
+    expect(screen.queryByRole("region", { name: "Images du produit" })).not.toBeInTheDocument();
+  });
+
+  it("soumet une variante historique retirée avec stock nul et sans propriété client", async () => {
+    const user = userEvent.setup();
+    mocks.save.mockResolvedValue({ ok: false, code: "INVALID", message: "stop", fieldErrors: {} });
+    render(<ProductForm initialValue={{ ...validDraft, images: [], variants: [{
+      id: "v1", historical: true, sku: "KEEP", size: "38", color: "Noir", stock: 4,
+    }] }} />);
+    await user.click(screen.getByRole("checkbox", { name: "Noir" }));
+    await user.click(screen.getByRole("button", { name: "Confirmer le retrait" }));
+    await user.click(screen.getByRole("button", { name: "Enregistrer le produit" }));
+    await waitFor(() => expect(mocks.save).toHaveBeenCalled());
+    expect(mocks.save.mock.calls[0][0].variants).toEqual([{ id: "v1", sku: "KEEP", size: "38", color: "Noir", stock: 0 }]);
+    expect(mocks.save.mock.calls[0][0].variants[0]).not.toHaveProperty("removed");
+  });
 });

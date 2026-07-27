@@ -6,13 +6,14 @@ import { useState } from "react";
 import { VariantEditor } from "@/components/admin/variant-editor";
 import type { EditableVariant } from "@/lib/catalog/variant-matrix";
 
-function Harness({ initial = [], protectedColors = new Set<string>(), disabled = false, errors = {} }: {
+function Harness({ initial = [], protectedColors = new Set<string>(), disabled = false, errors = {}, onConfirmedColorRemoval = vi.fn() }: {
   initial?: EditableVariant[]; protectedColors?: ReadonlySet<string>; disabled?: boolean; errors?: Record<string, string[]>;
+  onConfirmedColorRemoval?: (color: string) => void;
 }) {
   const [value, setValue] = useState(initial);
   return <>
     <VariantEditor productSlug="atlas" value={value} onChange={setValue} disabled={disabled} errors={errors}
-      protectedColors={protectedColors} onConfirmedColorRemoval={vi.fn()} />
+      protectedColors={protectedColors} onConfirmedColorRemoval={onConfirmedColorRemoval} />
     <output data-testid="value">{JSON.stringify(value)}</output>
   </>;
 }
@@ -96,8 +97,22 @@ describe("VariantEditor stock matrix", () => {
     render(<Protected />);
     await user.click(screen.getByRole("checkbox", { name: "Noir" }));
     expect(callback).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toHaveTextContent(/images.*Noir.*retirées du produit/i);
     await user.click(screen.getByRole("button", { name: "Confirmer le retrait" }));
     expect(callback).toHaveBeenCalledWith("Noir");
+  });
+
+  it("traps forward and backward focus inside the modal", async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={[{ id: "v1", color: "Noir", size: "38", sku: "N", stock: 0 }]} />);
+    await user.click(screen.getByRole("checkbox", { name: "Noir" }));
+    const cancel = screen.getByRole("button", { name: "Annuler" });
+    const confirm = screen.getByRole("button", { name: "Confirmer le retrait" });
+    expect(cancel).toHaveFocus();
+    await user.keyboard("{Shift>}{Tab}{/Shift}");
+    expect(confirm).toHaveFocus();
+    await user.tab();
+    expect(cancel).toHaveFocus();
   });
 
   it("shows conflict errors without changing variants", () => {
@@ -117,5 +132,17 @@ describe("VariantEditor stock matrix", () => {
     expect(screen.getByRole("spinbutton")).toBeDisabled();
     expect(screen.getByRole("spinbutton")).toHaveAccessibleDescription("Stock invalide");
     expect(screen.getByText("SKU avancés")).toBeVisible();
+    expect(screen.getByRole("group", { name: "Déclinaisons" })).toHaveAttribute("aria-busy", "true");
+  });
+
+  it("renders every variant server error and associates structural errors with the cell", async () => {
+    render(<Harness initial={[{ id: "v1", color: "Noir", size: "38", sku: "N", stock: 1 }]} errors={{
+      "variants.0": ["Ligne invalide"], "variants.0.id": ["ID invalide"], "variants.0.size": ["Pointure invalide"],
+      "variants.0.color": ["Couleur invalide"], "variants.0.stock": ["Stock invalide"], "variants.0.sku": ["SKU invalide"],
+    }} />);
+    for (const text of ["Ligne invalide", "ID invalide", "Pointure invalide", "Couleur invalide", "Stock invalide", "SKU invalide"]) {
+      expect(screen.getByText(text)).toBeInTheDocument();
+    }
+    expect(screen.getByRole("spinbutton")).toHaveAccessibleDescription(expect.stringMatching(/Pointure invalide.*Couleur invalide.*Stock invalide/s));
   });
 });

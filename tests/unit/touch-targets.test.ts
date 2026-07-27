@@ -37,6 +37,9 @@ describe("storefront touch targets", () => {
     const css = read("app/globals.css");
     expect(css).toMatch(/\.variant-matrix-color[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/s);
     expect(css).toMatch(/\.variant-matrix-size[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/s);
+    expect(css).toMatch(/\.variant-matrix-color:hover/);
+    expect(css).toMatch(/\.variant-matrix-size:hover/);
+    expect(css).toMatch(/\.variant-matrix-editor\.is-disabled/);
   });
 
   it("keeps the admin navigation on screen at 320 pixels", () => {
