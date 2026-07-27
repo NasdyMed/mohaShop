@@ -90,6 +90,22 @@ describe("HeroVideoCarousel", () => {
     expect(screen.getByText("03")).toHaveClass("hero-index");
   });
 
+  it("keeps both failures when active and prepared videos error in the same turn", async () => {
+    render(<HeroVideoCarousel videos={videos} fallback={<div>fallback</div>} />);
+    const active = screen.getByLabelText("Première");
+    const prepared = screen.getByLabelText("Deuxième");
+
+    act(() => {
+      fireEvent.error(active);
+      fireEvent.error(prepared);
+    });
+
+    expect(await screen.findByText("Troisième")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Afficher la vidéo 1 sur 3" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Afficher la vidéo 2 sur 3" })).toBeDisabled();
+    expect(screen.getByText("03")).toHaveClass("hero-index");
+  });
+
   it("skips failed videos and falls back after every video fails", async () => {
     render(<HeroVideoCarousel videos={videos} fallback={<div>fallback</div>} />);
     fireEvent.error(screen.getByLabelText("Première"));

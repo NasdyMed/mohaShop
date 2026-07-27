@@ -20,12 +20,19 @@ export function HeroVideoCarousel({ videos, fallback }: { videos: HeroVideoItem[
   const [failedIds, setFailedIds] = useState<Set<string>>(() => new Set());
   const [reducedMotion, setReducedMotion] = useState<boolean | null>(null);
   const videoRefs = useRef(new Map<string, HTMLVideoElement>());
+  const activeIndexRef = useRef(0);
+  const failedIdsRef = useRef<Set<string>>(new Set());
 
   if (previousListKey !== listKey) {
     setPreviousListKey(listKey);
     setActiveIndex(0);
     setFailedIds(new Set());
   }
+
+  useEffect(() => {
+    activeIndexRef.current = 0;
+    failedIdsRef.current = new Set();
+  }, [listKey]);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -55,13 +62,23 @@ export function HeroVideoCarousel({ videos, fallback }: { videos: HeroVideoItem[
   if (reducedMotion !== false || videos.length === 0 || safeActiveIndex < 0) return fallback;
 
   const failVideo = (id: string) => {
-    const failed = new Set(failedIds);
+    const failed = new Set(failedIdsRef.current);
     failed.add(id);
+    failedIdsRef.current = failed;
     setFailedIds(failed);
-    if (id === videos[safeActiveIndex]?.id) {
-      const next = nextAvailableIndex(videos, failed, safeActiveIndex);
-      if (next >= 0) setActiveIndex(next);
+    const current = activeIndexRef.current;
+    if (id === videos[current]?.id) {
+      const next = nextAvailableIndex(videos, failed, current);
+      if (next >= 0) {
+        activeIndexRef.current = next;
+        setActiveIndex(next);
+      }
     }
+  };
+
+  const selectVideo = (index: number) => {
+    activeIndexRef.current = index;
+    setActiveIndex(index);
   };
 
   return <>
@@ -85,7 +102,9 @@ export function HeroVideoCarousel({ videos, fallback }: { videos: HeroVideoItem[
           playsInline
           preload={active ? "auto" : "metadata"}
           inert={!active}
-          onEnded={() => { if (nextIndex >= 0) setActiveIndex(nextIndex); }}
+          onEnded={() => {
+            if (active && nextIndex >= 0) selectVideo(nextIndex);
+          }}
           onError={() => failVideo(video.id)}
         />;
       })}
@@ -98,7 +117,7 @@ export function HeroVideoCarousel({ videos, fallback }: { videos: HeroVideoItem[
         aria-label={`Afficher la vidéo ${index + 1} sur ${videos.length}`}
         aria-current={index === safeActiveIndex ? "true" : undefined}
         disabled={failedIds.has(video.id)}
-        onClick={() => setActiveIndex(index)}
+        onClick={() => selectVideo(index)}
       ><span aria-hidden="true" /></button>)}
     </div> : null}
   </>;
