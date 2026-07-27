@@ -61,6 +61,13 @@ describe("hero video actions", () => {
     await expect(createHeroVideoAction({})).rejects.toThrow("NEXT_REDIRECT");
     expect(fetch).not.toHaveBeenCalled();
   });
+  it("authentifie avant validation pour update et delete", async () => {
+    mocks.requireAdmin.mockRejectedValue(new Error("NEXT_REDIRECT"));
+    await expect(updateHeroVideosAction("invalid")).rejects.toThrow("NEXT_REDIRECT");
+    await expect(deleteHeroVideoAction("invalid")).rejects.toThrow("NEXT_REDIRECT");
+    expect(mocks.update).not.toHaveBeenCalled();
+    expect(mocks.remove).not.toHaveBeenCalled();
+  });
   it.each([
     [{ ...input, url: "http://localhost/a.mp4" }, "url"],
     [{ ...input, title: "" }, "title"],
@@ -76,6 +83,19 @@ describe("hero video actions", () => {
     [new Response(mp4, { headers: { "content-type": "video/mp4" } })],
   ])("rejette une vidéo distante non fiable", async (response) => {
     vi.mocked(fetch).mockResolvedValueOnce(response);
+    expect((await createHeroVideoAction(input)).ok).toBe(false);
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+  it("refuse une redirection HTTP sans suivre sa destination", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 302, headers: { location: url } }));
+    expect((await createHeroVideoAction(input)).ok).toBe(false);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+  it("rejette un Content-Range présent mais malformé même avec Content-Length", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(mp4, { status: 206, headers: {
+      "content-type": "video/mp4", "content-range": "invalid", "content-length": "12",
+    } }));
     expect((await createHeroVideoAction(input)).ok).toBe(false);
     expect(mocks.create).not.toHaveBeenCalled();
   });

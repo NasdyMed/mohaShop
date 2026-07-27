@@ -37,8 +37,9 @@ async function inspectRemoteVideo(url: string) {
   const type = response.headers.get("content-type")?.split(";")[0].trim();
   if (type !== "video/mp4" && type !== "video/webm") return false;
   const range = response.headers.get("content-range");
-  const rangeTotal = range?.match(/\/(\d+)$/)?.[1];
-  const rawSize = rangeTotal ?? response.headers.get("content-length");
+  const rangeTotal = range?.match(/^bytes \d+-\d+\/(\d+)$/)?.[1];
+  if (range !== null && !rangeTotal) return false;
+  const rawSize = range === null ? response.headers.get("content-length") : rangeTotal;
   if (!rawSize || !/^\d+$/.test(rawSize)) return false;
   const size = Number(rawSize);
   if (size < 1 || size > 50 * 1024 * 1024) return false;

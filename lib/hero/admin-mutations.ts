@@ -1,6 +1,5 @@
 import "server-only";
 import { Prisma } from "@prisma/client";
-import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { heroVideoInputSchema } from "@/lib/hero/validation";
 
@@ -31,11 +30,10 @@ export async function updateHeroVideos(raw: unknown[]) {
   const urls = inputs.map(({ url }) => url);
   if (new Set(ids).size !== ids.length || new Set(urls).size !== urls.length) throw new HeroVideoMutationError("DUPLICATE");
   return db.$transaction(async (tx) => {
-    const existing = await tx.heroVideo.findMany({ where: { id: { in: ids } }, select: { id: true } });
+    const existing = await tx.heroVideo.findMany({ select: { id: true, url: true } });
     if (existing.length !== ids.length) throw new HeroVideoMutationError("TAMPERED");
-    for (const id of ids) {
-      await tx.heroVideo.update({ where: { id }, data: { url: `https://temporary.public.blob.vercel-storage.com/${randomUUID()}` } });
-    }
+    const urlsById = new Map(existing.map((video) => [video.id, video.url]));
+    if (inputs.some((video) => urlsById.get(video.id!) !== video.url)) throw new HeroVideoMutationError("TAMPERED");
     await Promise.all(inputs.map((video, position) => tx.heroVideo.update({
       where: { id: video.id! },
       data: { url: video.url, title: video.title, isVisible: video.isVisible, position },
