@@ -27,4 +27,9 @@ describe("storefront touch targets", () => {
     expect(css).toMatch(/\.quick-color-option[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/s);
     expect(css).toMatch(/\.quick-size-option[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/s);
   });
+
+  it("gives the hero publication switch a centered 44 pixel target", () => {
+    const css = read("app/globals.css");
+    expect(css).toMatch(/\.admin-hero-publication\s+\.admin-switch\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;[^}]*justify-content:\s*center;/s);
+  });
 });

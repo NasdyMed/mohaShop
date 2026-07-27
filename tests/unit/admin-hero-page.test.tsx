@@ -178,6 +178,22 @@ describe("HeroVideoManager", () => {
     expect(mocks.remove).toHaveBeenCalledTimes(2);
   });
 
+  it("annonce et verrouille toute l'interface pendant une suppression", async () => {
+    let resolve!: (value: unknown) => void;
+    mocks.remove.mockReturnValue(new Promise((done) => { resolve = done; }));
+    render(<HeroVideoManager initialVideos={[first, second]} />);
+    const deleteButton = screen.getByRole("button", { name: "Supprimer Atlas" });
+    fireEvent.click(deleteButton);
+    fireEvent.click(deleteButton);
+    expect(mocks.remove).toHaveBeenCalledOnce();
+    const form = screen.getByRole("button", { name: "Enregistrer les modifications" }).closest("form")!;
+    expect(form).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("button", { name: "Ajouter des vidéos" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Supprimer Dunes" })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "Vidéo publiée Dunes" })).toBeDisabled();
+    resolve({ ok: true });
+  });
+
   it("rend les suppressions déjà différées non éditables et gère l'échec du retry", async () => {
     const user = userEvent.setup();
     mocks.remove.mockResolvedValue({ ok: false, message: "Réessayez plus tard.", fieldErrors: {} });

@@ -46,6 +46,7 @@ export function HeroVideoManager({ initialVideos }: { initialVideos: AdminHeroVi
   const [feedback, setFeedback] = useState<Feedback>(null);
   const saveLock = useRef(false);
   const uploadLock = useRef(false);
+  const deleteLock = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const activeVideos = videos.filter((video) => !video.deletingAt);
@@ -165,7 +166,8 @@ export function HeroVideoManager({ initialVideos }: { initialVideos: AdminHeroVi
   }
 
   async function remove(video: EditableVideo) {
-    if (deletingId || busy || uploading) return;
+    if (deleteLock.current || deletingId || busy || uploading) return;
+    deleteLock.current = true;
     setDeletingId(video.id);
     setFeedback(null);
     try {
@@ -184,12 +186,13 @@ export function HeroVideoManager({ initialVideos }: { initialVideos: AdminHeroVi
     } catch {
       setFeedback({ kind: "error", text: "La suppression a échoué. Réessayez." });
     } finally {
+      deleteLock.current = false;
       setDeletingId(null);
     }
   }
 
   return (
-    <form className="admin-hero-manager" onSubmit={save} aria-busy={busy || uploading}>
+    <form className="admin-hero-manager" onSubmit={save} aria-busy={busy || uploading || deletingId !== null}>
       <section className="admin-hero-toolbar" aria-label="Ajout de vidéos">
         <div>
           <strong>Bibliothèque vidéo</strong>

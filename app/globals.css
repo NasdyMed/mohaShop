@@ -713,6 +713,7 @@ html { scroll-behavior: smooth; }
 .admin-hero-publication { min-height: 62px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 12px 14px; background: #f8f1e7; }
 .admin-hero-publication > div { display: grid; gap: 4px; }
 .admin-hero-publication span { color: var(--muted); font-size: .78rem; }
+.admin-hero-publication .admin-switch { min-width: 44px; min-height: 44px; justify-content: center; }
 .admin-hero-actions { min-height: 44px; display: flex; justify-content: flex-end; gap: 8px; }
 .admin-hero-pending { margin: 0; padding: 10px 12px; color: #764d00; border-left: 3px solid var(--admin-warning); background: #fff0cc; font-size: .78rem; font-weight: 800; }
 .admin-hero-retry { flex: 1; min-height: 44px; padding: 8px 14px; border: 1px solid #9a6500; color: #704900; background: #fff; font-weight: 800; cursor: pointer; }
