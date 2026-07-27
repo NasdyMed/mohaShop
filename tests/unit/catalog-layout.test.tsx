@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/catalog/queries", () => ({ listVisibleProducts: vi.fn().mockResolvedValue(mocks.products) }));
+vi.mock("@/lib/hero/queries", () => ({ listVisibleHeroVideos: vi.fn().mockResolvedValue([]) }));
 vi.mock("@/components/cart/cart-link", () => ({ CartLink: () => <a href="/panier">Panier</a> }));
 vi.mock("next/image", () => ({ default: ({ alt, src }: { alt: string; src: string }) => <span role="img" aria-label={alt} data-src={src} /> }));
 

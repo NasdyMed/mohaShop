@@ -1,15 +1,20 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { HeroMedia } from "@/components/shop/hero-media";
 import { ProductCard } from "@/components/shop/product-card";
 import { listVisibleProducts } from "@/lib/catalog/queries";
+import { listVisibleHeroVideos } from "@/lib/hero/queries";
 import { localizePath, type Locale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { localizeProduct } from "@/lib/i18n/product";
 
 export async function CatalogPageView({ locale }: { locale: Locale }) {
   const dictionary = getDictionary(locale);
-  const products = await listVisibleProducts();
+  const [products, heroVideos] = await Promise.all([
+    listVisibleProducts(),
+    listVisibleHeroVideos(),
+  ]);
   const heroProduct = products.find((product) => product.image) ?? products[0];
   const localizedHero = heroProduct ? localizeProduct(heroProduct, locale) : null;
 
@@ -18,8 +23,10 @@ export async function CatalogPageView({ locale }: { locale: Locale }) {
       <div className="hero-content"><p className="eyebrow">{dictionary.home.eyebrow}</p><h1 id="catalog-title">{dictionary.home.title}</h1><p className="hero-copy">{dictionary.home.intro}</p><Link className="hero-cta" href="#collection">{locale === "fr" ? "Découvrir la collection" : "اكتشف المجموعة"} <span aria-hidden="true">↓</span></Link></div>
       <div className="hero-visual">
         <span className="hero-index" aria-hidden="true">01</span>
-        {heroProduct?.image ? <Image src={heroProduct.image.url} alt={`${localizedHero?.name}, ${locale === "fr" ? "sélection " : ""}Maison Botte`} fill priority sizes="(max-width: 760px) 100vw, 45vw" /> : <div className="hero-fallback" role="img" aria-label="Maison Botte">MB</div>}
-        <p>{localizedHero?.name ?? "Maison Botte"}</p>
+        <HeroMedia videos={heroVideos} fallback={<>
+          {heroProduct?.image ? <Image src={heroProduct.image.url} alt={`${localizedHero?.name}, ${locale === "fr" ? "sélection " : ""}Maison Botte`} fill priority sizes="(max-width: 760px) 100vw, 45vw" /> : <div className="hero-fallback" role="img" aria-label="Maison Botte">MB</div>}
+          <p>{localizedHero?.name ?? "Maison Botte"}</p>
+        </>} />
       </div>
     </section>
     <section className="store-promises" aria-label={dictionary.home.allProducts}><div className="shell">
