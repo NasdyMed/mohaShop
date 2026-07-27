@@ -22,8 +22,8 @@ export async function CatalogPageView({ locale }: { locale: Locale }) {
     <section className="hero hero-editorial shell" aria-labelledby="catalog-title">
       <div className="hero-content"><p className="eyebrow">{dictionary.home.eyebrow}</p><h1 id="catalog-title">{dictionary.home.title}</h1><p className="hero-copy">{dictionary.home.intro}</p><Link className="hero-cta" href="#collection">{locale === "fr" ? "Découvrir la collection" : "اكتشف المجموعة"} <span aria-hidden="true">↓</span></Link></div>
       <div className="hero-visual">
-        <span className="hero-index" aria-hidden="true">01</span>
         <HeroMedia videos={heroVideos} fallback={<>
+          <span className="hero-index" aria-hidden="true">01</span>
           {heroProduct?.image ? <Image src={heroProduct.image.url} alt={`${localizedHero?.name}, ${locale === "fr" ? "sélection " : ""}Maison Botte`} fill priority sizes="(max-width: 760px) 100vw, 45vw" /> : <div className="hero-fallback" role="img" aria-label="Maison Botte">MB</div>}
           <p>{localizedHero?.name ?? "Maison Botte"}</p>
         </>} />

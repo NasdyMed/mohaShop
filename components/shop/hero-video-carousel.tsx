@@ -58,11 +58,14 @@ export function HeroVideoCarousel({ videos, fallback }: { videos: HeroVideoItem[
     const failed = new Set(failedIds);
     failed.add(id);
     setFailedIds(failed);
-    const next = nextAvailableIndex(videos, failed, safeActiveIndex);
-    if (next >= 0) setActiveIndex(next);
+    if (id === videos[safeActiveIndex]?.id) {
+      const next = nextAvailableIndex(videos, failed, safeActiveIndex);
+      if (next >= 0) setActiveIndex(next);
+    }
   };
 
   return <>
+    <span className="hero-index" aria-hidden="true">{String(safeActiveIndex + 1).padStart(2, "0")}</span>
     <div className="hero-video-stage">
       {renderedIndices.map((index) => {
         const video = videos[index];

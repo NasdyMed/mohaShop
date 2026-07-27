@@ -12,12 +12,14 @@ const videos = [
 
 let reducedMotion = false;
 let motionListener: ((event: MediaQueryListEvent) => void) | undefined;
+const removeMotionListener = vi.fn();
 const play = vi.fn<() => Promise<void>>();
 const pause = vi.fn();
 
 beforeEach(() => {
   reducedMotion = false;
   motionListener = undefined;
+  removeMotionListener.mockReset();
   play.mockReset().mockResolvedValue();
   pause.mockReset();
   Object.defineProperty(window, "matchMedia", {
@@ -29,7 +31,7 @@ beforeEach(() => {
       addEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => {
         motionListener = listener;
       },
-      removeEventListener: vi.fn(),
+      removeEventListener: removeMotionListener,
       addListener: vi.fn(),
       removeListener: vi.fn(),
       dispatchEvent: vi.fn(),
@@ -53,7 +55,10 @@ describe("HeroVideoCarousel", () => {
     expect(rendered[0]).toHaveAttribute("data-active", "true");
     expect(rendered[1]).toHaveAttribute("preload", "metadata");
     expect(rendered[1]).toHaveAttribute("aria-hidden", "true");
+    expect(rendered[0]).not.toHaveAttribute("loop");
+    expect(rendered[0]).not.toHaveAttribute("controls");
     expect(document.querySelectorAll('video[data-active="true"]')).toHaveLength(1);
+    expect(screen.getByText("01")).toHaveClass("hero-index");
     await waitFor(() => expect(play).toHaveBeenCalledTimes(1));
   });
 
@@ -62,6 +67,7 @@ describe("HeroVideoCarousel", () => {
     fireEvent.ended(screen.getByLabelText("Première"));
     expect(await screen.findByText("Deuxième")).toBeInTheDocument();
     expect(screen.getByLabelText("Deuxième")).toHaveAttribute("data-active", "true");
+    expect(screen.getByText("02")).toHaveClass("hero-index");
   });
 
   it("selects a video from its accessible indicator", async () => {
@@ -70,6 +76,18 @@ describe("HeroVideoCarousel", () => {
     fireEvent.click(button);
     expect(await screen.findByText("Deuxième")).toBeInTheDocument();
     expect(button).toHaveAttribute("aria-current", "true");
+    expect(screen.getByText("02")).toHaveClass("hero-index");
+  });
+
+  it("keeps the active video when the prepared next video fails and skips it on ended", async () => {
+    render(<HeroVideoCarousel videos={videos} fallback={<div>fallback</div>} />);
+    fireEvent.error(screen.getByLabelText("Deuxième"));
+    expect(screen.getByText("Première")).toBeInTheDocument();
+    expect(screen.getByLabelText("Première")).toHaveAttribute("data-active", "true");
+
+    fireEvent.ended(screen.getByLabelText("Première"));
+    expect(await screen.findByText("Troisième")).toBeInTheDocument();
+    expect(screen.getByText("03")).toHaveClass("hero-index");
   });
 
   it("skips failed videos and falls back after every video fails", async () => {
@@ -109,6 +127,14 @@ describe("HeroVideoCarousel", () => {
     reducedMotion = false;
     act(() => motionListener?.({ matches: false } as MediaQueryListEvent));
     expect(await screen.findByLabelText("Première")).toBeInTheDocument();
+  });
+
+  it("removes its reduced-motion listener on unmount", async () => {
+    const { unmount } = render(<HeroVideoCarousel videos={videos} fallback={<div>fallback</div>} />);
+    await screen.findByLabelText("Première");
+    const listener = motionListener;
+    unmount();
+    expect(removeMotionListener).toHaveBeenCalledWith("change", listener);
   });
 });
 
