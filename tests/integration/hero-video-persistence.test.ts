@@ -54,4 +54,15 @@ describe.sequential("hero video admin persistence", () => {
     const saved = (await mutations.listAdminHeroVideos()).filter(({ title }) => title.startsWith(prefix));
     expect(saved.map(({ position }) => position).sort((a, b) => a - b)).toEqual([0, 1, 2]);
   });
+  it("empêche une mise à jour bulk de ressusciter une suppression en attente", async () => {
+    const current = (await mutations.listAdminHeroVideos()).filter(({ title }) => title.startsWith(prefix));
+    const target = current[0];
+    await mutations.markHeroVideoForDeletion(target.id);
+    await expect(mutations.updateHeroVideos(current)).rejects.toMatchObject({ code: "TAMPERED" });
+    const pending = await db.heroVideo.findUniqueOrThrow({ where: { id: target.id } });
+    expect(pending).toMatchObject({ isVisible: false, deletingAt: expect.any(Date), url: target.url });
+    await db.heroVideo.update({ where: { id: target.id }, data: { isVisible: true } });
+    await mutations.finalizeHeroVideoDeletion(target.id, target.url);
+    await expect(db.heroVideo.findUnique({ where: { id: target.id } })).resolves.toBeNull();
+  });
 });

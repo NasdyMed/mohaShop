@@ -10,15 +10,15 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("@/lib/db", () => ({
   db: {
-    heroVideo: { findUnique: mocks.findUnique, update: mocks.update, deleteMany: mocks.remove },
+    heroVideo: { findMany: mocks.findMany, findUnique: mocks.findUnique, update: mocks.update, deleteMany: mocks.remove },
     $transaction: mocks.transaction,
   },
 }));
-import { finalizeHeroVideoDeletion, HeroVideoMutationError, markHeroVideoForDeletion, updateHeroVideos } from "@/lib/hero/admin-mutations";
+import { finalizeHeroVideoDeletion, HeroVideoMutationError, listAdminHeroVideos, markHeroVideoForDeletion, updateHeroVideos } from "@/lib/hero/admin-mutations";
 
 const rows = [
-  { id: "cm00000000000000000000001", url: "https://store.public.blob.vercel-storage.com/a.mp4", title: "Vidéo A", position: 0, isVisible: true },
-  { id: "cm00000000000000000000002", url: "https://store.public.blob.vercel-storage.com/b.mp4", title: "Vidéo B", position: 1, isVisible: true },
+  { id: "cm00000000000000000000001", url: "https://store.public.blob.vercel-storage.com/a.mp4", title: "Vidéo A", position: 0, isVisible: true, deletingAt: null },
+  { id: "cm00000000000000000000002", url: "https://store.public.blob.vercel-storage.com/b.mp4", title: "Vidéo B", position: 1, isVisible: true, deletingAt: null },
 ];
 const tx = { heroVideo: { findMany: mocks.findMany, update: mocks.update } };
 
@@ -53,7 +53,11 @@ describe("hero video admin mutations", () => {
     mocks.findUnique.mockResolvedValue({ url: rows[0].url });
     mocks.update.mockResolvedValue({ url: rows[0].url });
     await expect(markHeroVideoForDeletion(rows[0].id)).resolves.toEqual({ url: rows[0].url });
-    expect(mocks.update).toHaveBeenCalledWith({ where: { id: rows[0].id }, data: { isVisible: false }, select: { url: true } });
+    expect(mocks.update).toHaveBeenCalledWith({
+      where: { id: rows[0].id },
+      data: { isVisible: false, deletingAt: expect.any(Date) },
+      select: { url: true },
+    });
   });
   it("retourne NOT_FOUND sans suppression", async () => {
     mocks.findUnique.mockResolvedValue(null);
@@ -64,7 +68,7 @@ describe("hero video admin mutations", () => {
   it("finalise uniquement la ligne correspondant à l'id et l'url", async () => {
     mocks.remove.mockResolvedValue({ count: 1 });
     await finalizeHeroVideoDeletion(rows[0].id, rows[0].url);
-    expect(mocks.remove).toHaveBeenCalledWith({ where: { id: rows[0].id, url: rows[0].url, isVisible: false } });
+    expect(mocks.remove).toHaveBeenCalledWith({ where: { id: rows[0].id, url: rows[0].url, deletingAt: { not: null } } });
   });
   it("retente au plus trois fois une transaction P2034 en isolation sérialisable", async () => {
     const conflict = new Prisma.PrismaClientKnownRequestError("conflict", { code: "P2034", clientVersion: "7.9.0" });
@@ -78,5 +82,24 @@ describe("hero video admin mutations", () => {
     mocks.transaction.mockRejectedValue(error);
     await expect(updateHeroVideos(rows)).rejects.toBe(error);
     expect(mocks.transaction).toHaveBeenCalledTimes(1);
+  });
+  it("arrête après trois conflits P2034 et rejette le dernier", async () => {
+    const conflict = new Prisma.PrismaClientKnownRequestError("conflict", { code: "P2034", clientVersion: "7.9.0" });
+    mocks.transaction.mockRejectedValue(conflict);
+    await expect(updateHeroVideos(rows)).rejects.toBe(conflict);
+    expect(mocks.transaction).toHaveBeenCalledTimes(3);
+  });
+  it("exclut les suppressions en attente de l'ensemble éditable", async () => {
+    const pending = { ...rows[1], deletingAt: new Date() };
+    mocks.findMany.mockResolvedValue([rows[0]]);
+    await expect(updateHeroVideos([rows[0], pending])).rejects.toMatchObject({ code: "TAMPERED" });
+    expect(mocks.findMany).toHaveBeenCalledWith({ where: { deletingAt: null }, select: { id: true, url: true } });
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+  it("conserve les suppressions en attente dans la liste admin pour permettre un retry", async () => {
+    const pending = { ...rows[1], deletingAt: new Date() };
+    mocks.findMany.mockResolvedValue([rows[0], pending]);
+    await expect(listAdminHeroVideos()).resolves.toEqual([rows[0], pending]);
+    expect(mocks.findMany).toHaveBeenCalledWith({ orderBy: [{ position: "asc" }, { createdAt: "asc" }] });
   });
 });

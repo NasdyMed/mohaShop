@@ -5,6 +5,7 @@ CREATE TABLE "HeroVideo" (
     "title" TEXT NOT NULL,
     "position" INTEGER NOT NULL DEFAULT 0,
     "isVisible" BOOLEAN NOT NULL DEFAULT false,
+    "deletingAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -15,4 +16,4 @@ CREATE TABLE "HeroVideo" (
 CREATE UNIQUE INDEX "HeroVideo_url_key" ON "HeroVideo"("url");
 
 -- CreateIndex
-CREATE INDEX "HeroVideo_isVisible_position_idx" ON "HeroVideo"("isVisible", "position");
+CREATE INDEX "HeroVideo_isVisible_deletingAt_position_idx" ON "HeroVideo"("isVisible", "deletingAt", "position");

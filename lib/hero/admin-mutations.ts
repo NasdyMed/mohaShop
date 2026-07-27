@@ -1,6 +1,7 @@
 import "server-only";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
+import type { AdminHeroVideoItem } from "@/lib/hero/types";
 import { heroVideoInputSchema } from "@/lib/hero/validation";
 
 export type HeroVideoMutationCode = "INVALID" | "NOT_FOUND" | "TAMPERED" | "DUPLICATE" | "UNKNOWN";
@@ -8,7 +9,7 @@ export class HeroVideoMutationError extends Error {
   constructor(public readonly code: HeroVideoMutationCode) { super(code); this.name = "HeroVideoMutationError"; }
 }
 
-export async function listAdminHeroVideos() {
+export async function listAdminHeroVideos(): Promise<AdminHeroVideoItem[]> {
   return db.heroVideo.findMany({ orderBy: [{ position: "asc" }, { createdAt: "asc" }] });
 }
 
@@ -32,7 +33,7 @@ export async function updateHeroVideos(raw: unknown[]) {
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
       return await db.$transaction(async (tx) => {
-        const existing = await tx.heroVideo.findMany({ select: { id: true, url: true } });
+        const existing = await tx.heroVideo.findMany({ where: { deletingAt: null }, select: { id: true, url: true } });
         if (existing.length !== ids.length) throw new HeroVideoMutationError("TAMPERED");
         const urlsById = new Map(existing.map((video) => [video.id, video.url]));
         if (inputs.some((video) => urlsById.get(video.id!) !== video.url)) throw new HeroVideoMutationError("TAMPERED");
@@ -53,9 +54,9 @@ export async function updateHeroVideos(raw: unknown[]) {
 export async function markHeroVideoForDeletion(id: string) {
   const found = await db.heroVideo.findUnique({ where: { id }, select: { url: true } });
   if (!found) throw new HeroVideoMutationError("NOT_FOUND");
-  return db.heroVideo.update({ where: { id }, data: { isVisible: false }, select: { url: true } });
+  return db.heroVideo.update({ where: { id }, data: { isVisible: false, deletingAt: new Date() }, select: { url: true } });
 }
 
 export async function finalizeHeroVideoDeletion(id: string, url: string) {
-  await db.heroVideo.deleteMany({ where: { id, url, isVisible: false } });
+  await db.heroVideo.deleteMany({ where: { id, url, deletingAt: { not: null } } });
 }
