@@ -5,6 +5,7 @@ import {
   buildVariantMatrix,
   productSizes,
   requiresVariantRemovalConfirmation,
+  VariantMatrixConflictError,
   variantKey,
 } from "@/lib/catalog/variant-matrix";
 
@@ -29,6 +30,21 @@ describe("buildSuggestedSku", () => {
 
   it("uses PRODUIT when the normalized slug is empty", () => {
     expect(buildSuggestedSku(" --- ", "Écru", "40")).toBe("PRODUIT-ECRU-40");
+  });
+
+  it("bounds long SKUs to 64 allowed characters with a deterministic hash suffix", () => {
+    const sku = buildSuggestedSku(`bottine-${"atlas-".repeat(20)}`, "Cognac foncé", "38");
+
+    expect(sku).toHaveLength(64);
+    expect(sku).toMatch(/^[A-Z0-9-]+-[A-F0-9]{8}$/);
+  });
+
+  it("keeps long slugs with the same prefix distinct", () => {
+    const prefix = `bottine-${"atlas-".repeat(20)}`;
+
+    expect(buildSuggestedSku(`${prefix}alpha`, "Noir", "38")).not.toBe(
+      buildSuggestedSku(`${prefix}bravo`, "Noir", "38"),
+    );
   });
 });
 
@@ -69,6 +85,29 @@ describe("buildVariantMatrix", () => {
     buildVariantMatrix(existing, colors, sizes, "atlas");
 
     expect({ existing, colors, sizes }).toEqual(snapshots);
+  });
+
+  it("throws a typed conflict with useful context for duplicate normalized existing keys without mutation", () => {
+    const existing = [
+      { id: "one", color: " Noir ", size: "38", sku: "N-38-A", stock: 1 },
+      { id: "two", color: "noir", size: " 38 ", sku: "N-38-B", stock: 0 },
+    ];
+    const snapshot = structuredClone(existing);
+    const key = variantKey("Noir", "38");
+
+    expect(() => buildVariantMatrix(existing, ["Noir"], ["38"], "atlas")).toThrowError(
+      expect.objectContaining({
+        name: "VariantMatrixConflictError",
+        conflicts: [{ key, indexes: [0, 1] }],
+      }),
+    );
+
+    try {
+      buildVariantMatrix(existing, ["Noir"], ["38"], "atlas");
+    } catch (error) {
+      expect(error).toBeInstanceOf(VariantMatrixConflictError);
+    }
+    expect(existing).toEqual(snapshot);
   });
 });
 

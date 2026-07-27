@@ -38,7 +38,21 @@ function skuPart(value: string) {
 
 export function buildSuggestedSku(productSlug: string, color: string, size: string) {
   const slug = skuPart(productSlug) || "PRODUIT";
-  return [slug, skuPart(color), skuPart(size)].filter(Boolean).join("-");
+  const fullSku = [slug, skuPart(color), skuPart(size)].filter(Boolean).join("-");
+  if (fullSku.length <= 64) return fullSku;
+
+  const hash = fnv1a(fullSku);
+  const prefix = fullSku.slice(0, 64 - hash.length - 1).replace(/-+$/g, "");
+  return `${prefix}-${hash}`;
+}
+
+function fnv1a(value: string) {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).toUpperCase().padStart(8, "0");
 }
 
 function uniqueSelections(values: readonly string[]) {
@@ -56,13 +70,43 @@ function uniqueSelections(values: readonly string[]) {
   return unique;
 }
 
+export type VariantMatrixConflict = {
+  key: string;
+  indexes: number[];
+};
+
+export class VariantMatrixConflictError extends Error {
+  readonly conflicts: VariantMatrixConflict[];
+
+  constructor(conflicts: VariantMatrixConflict[]) {
+    super(`Conflicting existing variant keys at indexes: ${conflicts.map(({ indexes }) => indexes.join(",")).join("; ")}`);
+    this.name = "VariantMatrixConflictError";
+    this.conflicts = conflicts;
+  }
+}
+
+function indexExistingVariants(existing: readonly EditableVariant[]) {
+  const indexesByKey = new Map<string, number[]>();
+  existing.forEach((variant, index) => {
+    const key = variantKey(variant.color, variant.size);
+    indexesByKey.set(key, [...(indexesByKey.get(key) ?? []), index]);
+  });
+
+  const conflicts = [...indexesByKey]
+    .filter(([, indexes]) => indexes.length > 1)
+    .map(([key, indexes]) => ({ key, indexes }));
+  if (conflicts.length > 0) throw new VariantMatrixConflictError(conflicts);
+
+  return new Map(existing.map((variant) => [variantKey(variant.color, variant.size), variant]));
+}
+
 export function buildVariantMatrix(
   existing: readonly EditableVariant[],
   selectedColors: readonly string[],
   selectedSizes: readonly string[],
   productSlug: string,
 ): EditableVariant[] {
-  const existingByKey = new Map(existing.map((variant) => [variantKey(variant.color, variant.size), variant]));
+  const existingByKey = indexExistingVariants(existing);
   const colors = uniqueSelections(selectedColors);
   const sizes = uniqueSelections(selectedSizes);
 
