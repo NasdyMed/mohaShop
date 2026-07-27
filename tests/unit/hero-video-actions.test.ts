@@ -13,7 +13,10 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("@/lib/auth/require-admin", () => ({ requireAdmin: mocks.requireAdmin }));
 vi.mock("@vercel/blob/client", () => ({ handleUpload: mocks.handleUpload }));
-vi.mock("@vercel/blob", () => ({ del: mocks.del }));
+vi.mock("@vercel/blob", () => ({
+  del: mocks.del,
+  BlobNotFoundError: class BlobNotFoundError extends Error {},
+}));
 vi.mock("node:crypto", async (original) => ({ ...(await original<typeof import("node:crypto")>()), randomUUID: mocks.randomUUID }));
 vi.mock("@/lib/hero/admin-mutations", () => ({
   createHeroVideo: mocks.create,
@@ -25,7 +28,7 @@ vi.mock("@/lib/hero/admin-mutations", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 
 import { POST } from "@/app/api/admin/hero-videos/upload/route";
-import { createHeroVideoAction, deleteHeroVideoAction, updateHeroVideosAction } from "@/app/actions/hero-videos";
+import { cleanupHeroVideoUploadAction, createHeroVideoAction, deleteHeroVideoAction, updateHeroVideosAction } from "@/app/actions/hero-videos";
 
 const url = "https://store.public.blob.vercel-storage.com/hero/a.mp4";
 const input = { url, title: "Vidéo accueil", position: 0, isVisible: true };
@@ -69,6 +72,34 @@ describe("hero video actions", () => {
     await expect(deleteHeroVideoAction("invalid")).rejects.toThrow("NEXT_REDIRECT");
     expect(mocks.update).not.toHaveBeenCalled();
     expect(mocks.markForDeletion).not.toHaveBeenCalled();
+  });
+  it("authentifie avant validation pour le nettoyage d'un upload", async () => {
+    mocks.requireAdmin.mockRejectedValue(new Error("NEXT_REDIRECT"));
+    await expect(cleanupHeroVideoUploadAction("invalid")).rejects.toThrow("NEXT_REDIRECT");
+    expect(mocks.del).not.toHaveBeenCalled();
+  });
+  it.each([
+    "https://store.public.blob.vercel-storage.com/products/a.mp4",
+    "https://evil.example/hero/a.mp4",
+    "https://store.public.blob.vercel-storage.com/hero%2Fa.mp4",
+  ])("refuse de nettoyer une URL hors du répertoire Hero", async (unsafeUrl) => {
+    await expect(cleanupHeroVideoUploadAction(unsafeUrl)).resolves.toMatchObject({ ok: false });
+    expect(mocks.del).not.toHaveBeenCalled();
+  });
+  it("nettoie uniquement un Blob Hero et traite l'absence comme un succès idempotent", async () => {
+    mocks.del.mockResolvedValueOnce(undefined);
+    await expect(cleanupHeroVideoUploadAction(url)).resolves.toEqual({ ok: true });
+    expect(mocks.del).toHaveBeenCalledWith(url);
+    const { BlobNotFoundError } = await import("@vercel/blob");
+    mocks.del.mockRejectedValueOnce(new BlobNotFoundError());
+    await expect(cleanupHeroVideoUploadAction(url)).resolves.toEqual({ ok: true });
+  });
+  it("masque l'erreur fournisseur si le nettoyage échoue", async () => {
+    mocks.del.mockRejectedValueOnce(new Error("secret provider token"));
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await expect(cleanupHeroVideoUploadAction(url)).resolves.toMatchObject({ ok: false, message: expect.any(String) });
+    expect(JSON.stringify(log.mock.calls)).not.toContain("secret provider token");
+    log.mockRestore();
   });
   it.each([
     [{ ...input, url: "http://localhost/a.mp4" }, "url"],

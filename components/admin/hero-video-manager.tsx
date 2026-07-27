@@ -3,6 +3,7 @@
 import { upload } from "@vercel/blob/client";
 import { ChangeEvent, FormEvent, useRef, useState } from "react";
 import {
+  cleanupHeroVideoUploadAction,
   createHeroVideoAction,
   deleteHeroVideoAction,
   updateHeroVideosAction,
@@ -119,6 +120,17 @@ export function HeroVideoManager({ initialVideos }: { initialVideos: AdminHeroVi
     setFeedback(null);
     let added = 0;
     let failed = 0;
+    let cleanupFailed = false;
+    let lastError = "";
+    async function cleanupOrphan(url: string) {
+      try {
+        const cleanup = await cleanupHeroVideoUploadAction(url);
+        if (!cleanup.ok) cleanupFailed = true;
+      } catch {
+        cleanupFailed = true;
+        console.error("hero_video_upload_cleanup_request_failed", { category: "cleanup" });
+      }
+    }
     try {
       for (const file of files) {
         setUploadName(file.name);
@@ -132,28 +144,42 @@ export function HeroVideoManager({ initialVideos }: { initialVideos: AdminHeroVi
           });
         } catch {
           failed += 1;
-          setFeedback({ kind: "error", text: `Le téléversement de ${file.name} a échoué.` });
+          lastError = `Le téléversement de ${file.name} a échoué.`;
+          setFeedback({ kind: "error", text: lastError });
           continue;
         }
         const title = file.name.replace(/\.[^.]+$/, "");
-        const result = await createHeroVideoAction({
-          url: blob.url,
-          title,
-          position: activeVideos.length + added,
-          isVisible: false,
-        });
+        let result;
+        try {
+          result = await createHeroVideoAction({
+            url: blob.url,
+            title,
+            position: activeVideos.length + added,
+            isVisible: false,
+          });
+        } catch {
+          failed += 1;
+          lastError = `La création de ${file.name} a échoué.`;
+          await cleanupOrphan(blob.url);
+          setFeedback({ kind: "error", text: lastError });
+          continue;
+        }
         if (!result.ok) {
           failed += 1;
-          setFeedback({ kind: "error", text: result.message });
+          lastError = result.message;
+          await cleanupOrphan(blob.url);
+          setFeedback({ kind: "error", text: lastError });
           continue;
         }
         added += 1;
         setVideos((current) => normalizePositions([...current, result.video]));
       }
       if (failed > 0 && added > 0) {
-        setFeedback({ kind: "error", text: `${added} vidéo${added > 1 ? "s" : ""} ajoutée${added > 1 ? "s" : ""}, ${failed} échec${failed > 1 ? "s" : ""}.` });
+        setFeedback({ kind: "error", text: `${added} vidéo${added > 1 ? "s" : ""} ajoutée${added > 1 ? "s" : ""}, ${failed} échec${failed > 1 ? "s" : ""}.${cleanupFailed ? " Certains fichiers temporaires n’ont pas pu être nettoyés." : ""}` });
       } else if (added > 0) {
         setFeedback({ kind: "success", text: `${added} vidéo${added > 1 ? "s" : ""} ajoutée${added > 1 ? "s" : ""}.` });
+      } else if (failed > 0 && cleanupFailed) {
+        setFeedback({ kind: "error", text: `${lastError} Le fichier temporaire n’a pas pu être nettoyé.` });
       }
     } catch {
       setFeedback({ kind: "error", text: "L’ajout des vidéos a échoué. Réessayez." });

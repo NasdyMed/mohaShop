@@ -1,10 +1,10 @@
 "use server";
-import { del } from "@vercel/blob";
+import { BlobNotFoundError, del } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { createHeroVideo, finalizeHeroVideoDeletion, HeroVideoMutationError, markHeroVideoForDeletion, updateHeroVideos } from "@/lib/hero/admin-mutations";
-import { hasVideoSignature, heroVideoInputSchema } from "@/lib/hero/validation";
+import { hasVideoSignature, heroVideoInputSchema, isHeroVideoBlobUrl } from "@/lib/hero/validation";
 
 type FailureCode = "INVALID" | "NOT_FOUND" | "TAMPERED" | "DUPLICATE" | "REMOTE_INVALID" | "UNKNOWN";
 type Failure = { ok: false; code: FailureCode; message: string; fieldErrors: Record<string, string[]> };
@@ -69,6 +69,19 @@ export async function createHeroVideoAction(raw: unknown) {
   if (!(await inspectRemoteVideo(parsed.data.url))) return failure("REMOTE_INVALID", { url: [generic.REMOTE_INVALID] });
   try { const video = await createHeroVideo(parsed.data); invalidate(); return { ok: true as const, video }; }
   catch (error) { return mutationFailure(error); }
+}
+
+export async function cleanupHeroVideoUploadAction(raw: unknown) {
+  await requireAdmin();
+  if (!isHeroVideoBlobUrl(raw)) return failure("INVALID");
+  try {
+    await del(raw);
+    return { ok: true as const };
+  } catch (error) {
+    if (error instanceof BlobNotFoundError) return { ok: true as const };
+    console.error("hero_video_upload_cleanup_failed", { category: "provider" });
+    return { ok: false as const, message: "Le fichier temporaire n’a pas pu être nettoyé." };
+  }
 }
 
 const updateSchema = z.array(heroVideoInputSchema.extend({ id: z.cuid() })).max(1000);

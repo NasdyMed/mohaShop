@@ -32,4 +32,11 @@ describe("storefront touch targets", () => {
     const css = read("app/globals.css");
     expect(css).toMatch(/\.admin-hero-publication\s+\.admin-switch\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;[^}]*justify-content:\s*center;/s);
   });
+
+  it("keeps the admin navigation on screen at 320 pixels", () => {
+    const css = read("app/globals.css");
+    expect(css).toMatch(/@media\s*\(max-width:\s*620px\)\s*\{[^}]*\.admin-header\s*\{[^}]*flex-wrap:\s*wrap;/s);
+    expect(css).toMatch(/@media\s*\(max-width:\s*620px\)[\s\S]*?\.admin-header nav\s*\{[^}]*width:\s*100%;[^}]*flex-wrap:\s*wrap;/);
+    expect(css).toMatch(/\.admin-header nav a,\s*\.admin-header nav button\s*\{[^}]*min-height:\s*44px;/s);
+  });
 });

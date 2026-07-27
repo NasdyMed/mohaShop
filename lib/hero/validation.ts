@@ -3,6 +3,23 @@ import { z } from "zod";
 const VERCEL_BLOB_HOSTNAME =
   /^[^.]+\.public\.blob\.vercel-storage\.com$/;
 
+export function isHeroVideoBlobUrl(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  try {
+    const url = new URL(value);
+    return (
+      url.protocol === "https:" &&
+      url.username === "" &&
+      url.password === "" &&
+      url.port === "" &&
+      VERCEL_BLOB_HOSTNAME.test(url.hostname) &&
+      url.pathname.startsWith("/hero/")
+    );
+  } catch {
+    return false;
+  }
+}
+
 const heroVideoUrlSchema = z
   .url()
   .refine((value) => {
