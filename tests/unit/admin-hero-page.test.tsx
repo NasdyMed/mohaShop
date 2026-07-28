@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   list: vi.fn(),
-  upload: vi.fn(),
+  uploadHeroVideo: vi.fn(),
   create: vi.fn(),
   update: vi.fn(),
   remove: vi.fn(),
@@ -12,7 +12,9 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/hero/admin-mutations", () => ({ listAdminHeroVideos: mocks.list }));
-vi.mock("@vercel/blob/client", () => ({ upload: mocks.upload }));
+vi.mock("@/app/actions/upload-hero-video", () => ({
+  uploadHeroVideoAction: mocks.uploadHeroVideo,
+}));
 vi.mock("@/app/actions/hero-videos", () => ({
   createHeroVideoAction: mocks.create,
   updateHeroVideosAction: mocks.update,
@@ -65,6 +67,7 @@ describe("HeroVideoManager", () => {
     expect(input).toHaveAttribute("type", "file");
     expect(input).toHaveAttribute("multiple");
     expect(input).toHaveAttribute("accept", "video/mp4,video/webm");
+    expect(screen.getByText(/4 Mio maximum/i)).toBeVisible();
     expect(screen.getByRole("button", { name: "Enregistrer les modifications" })).toBeDisabled();
   });
 
@@ -103,11 +106,11 @@ describe("HeroVideoManager", () => {
     resolve({ ok: true, videos: [first] });
   });
 
-  it("téléverse plusieurs fichiers avec progression puis crée chaque ligne", async () => {
+  it("téléverse plusieurs fichiers par le serveur puis crée chaque ligne", async () => {
     const user = userEvent.setup();
-    mocks.upload.mockImplementation(async (name: string, _file: File, options: { onUploadProgress(event: { percentage: number }): void }) => {
-      options.onUploadProgress({ percentage: 48 });
-      return { url: `https://blob.test/${name}` };
+    mocks.uploadHeroVideo.mockImplementation(async (data: FormData) => {
+      const file = data.get("file") as File;
+      return { ok: true, url: `https://blob.test/${file.name}` };
     });
     mocks.create
       .mockResolvedValueOnce({ ok: true, video: first })
@@ -118,20 +121,18 @@ describe("HeroVideoManager", () => {
       new File(["webm"], "Dunes.webm", { type: "video/webm" }),
     ]);
     await waitFor(() => expect(mocks.create).toHaveBeenCalledTimes(2));
-    expect(mocks.upload).toHaveBeenCalledWith("Atlas nuit.mp4", expect.any(File), expect.objectContaining({
-      access: "public",
-      handleUploadUrl: "/api/admin/hero-videos/upload",
-      onUploadProgress: expect.any(Function),
-    }));
+    expect(mocks.uploadHeroVideo).toHaveBeenCalledTimes(2);
+    expect(mocks.uploadHeroVideo.mock.calls[0][0]).toBeInstanceOf(FormData);
+    expect((mocks.uploadHeroVideo.mock.calls[0][0] as FormData).get("file")).toEqual(expect.any(File));
     expect(mocks.create).toHaveBeenNthCalledWith(1, expect.objectContaining({ title: "Atlas nuit", position: 0, isVisible: false }));
     expect(await screen.findByRole("status")).toHaveTextContent(/2 vidéos ajoutées/i);
   });
 
   it("conserve l'erreur d'un lot partiel tout en ajoutant les vidéos créées", async () => {
     const user = userEvent.setup();
-    mocks.upload
-      .mockResolvedValueOnce({ url: "https://blob.test/fail.mp4" })
-      .mockResolvedValueOnce({ url: "https://blob.test/ok.mp4" });
+    mocks.uploadHeroVideo
+      .mockResolvedValueOnce({ ok: true, url: "https://blob.test/fail.mp4" })
+      .mockResolvedValueOnce({ ok: true, url: "https://blob.test/ok.mp4" });
     mocks.create
       .mockResolvedValueOnce({ ok: false, message: "La création a échoué.", fieldErrors: {} })
       .mockResolvedValueOnce({ ok: true, video: first });
@@ -145,7 +146,7 @@ describe("HeroVideoManager", () => {
   });
 
   it("nettoie exactement une fois le Blob après un refus explicite de création", async () => {
-    mocks.upload.mockResolvedValue({ url: "https://store.public.blob.vercel-storage.com/hero/orphan.mp4" });
+    mocks.uploadHeroVideo.mockResolvedValue({ ok: true, url: "https://store.public.blob.vercel-storage.com/hero/orphan.mp4" });
     mocks.create.mockResolvedValue({ ok: false, message: "La création a échoué.", fieldErrors: {} });
     mocks.cleanupUpload.mockResolvedValue({ ok: true });
     render(<HeroVideoManager initialVideos={[]} />);
@@ -158,7 +159,7 @@ describe("HeroVideoManager", () => {
   });
 
   it("ne nettoie pas le Blob si la réponse de création est perdue et peut cacher un commit réussi", async () => {
-    mocks.upload.mockResolvedValue({ url: "https://store.public.blob.vercel-storage.com/hero/referenced.mp4" });
+    mocks.uploadHeroVideo.mockResolvedValue({ ok: true, url: "https://store.public.blob.vercel-storage.com/hero/referenced.mp4" });
     mocks.create.mockRejectedValue(new Error("response lost after commit"));
     render(<HeroVideoManager initialVideos={[]} />);
     fireEvent.change(screen.getByLabelText("Ajouter des vidéos"), {
@@ -169,7 +170,7 @@ describe("HeroVideoManager", () => {
   });
 
   it("signale sans détail fournisseur un échec de nettoyage du Blob orphelin", async () => {
-    mocks.upload.mockResolvedValue({ url: "https://store.public.blob.vercel-storage.com/hero/orphan.mp4" });
+    mocks.uploadHeroVideo.mockResolvedValue({ ok: true, url: "https://store.public.blob.vercel-storage.com/hero/orphan.mp4" });
     mocks.create.mockResolvedValue({ ok: false, message: "La création a échoué.", fieldErrors: {} });
     mocks.cleanupUpload.mockResolvedValue({ ok: false, message: "provider secret" });
     render(<HeroVideoManager initialVideos={[]} />);
@@ -186,13 +187,13 @@ describe("HeroVideoManager", () => {
     fireEvent.change(input, { target: { files: [new File(["x"], "image.png", { type: "image/png" })] } });
     expect(await screen.findByRole("alert")).toHaveTextContent(/mp4 ou webm/i);
     const huge = new File(["x"], "large.mp4", { type: "video/mp4" });
-    Object.defineProperty(huge, "size", { value: 50 * 1024 * 1024 + 1 });
+    Object.defineProperty(huge, "size", { value: 4 * 1024 * 1024 + 1 });
     fireEvent.change(input, { target: { files: [huge] } });
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/50 mio/i));
-    mocks.upload.mockRejectedValueOnce(new Error("Missing BLOB_READ_WRITE_TOKEN"));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/4 mio/i));
+    mocks.uploadHeroVideo.mockRejectedValueOnce(new Error("network"));
     fireEvent.change(input, { target: { files: [new File(["ok"], "network.mp4", { type: "video/mp4" })] } });
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/missing blob_read_write_token/i));
-    mocks.upload.mockResolvedValueOnce({ url: "https://blob.test/db.mp4" });
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/téléversement/i));
+    mocks.uploadHeroVideo.mockResolvedValueOnce({ ok: true, url: "https://blob.test/db.mp4" });
     mocks.create.mockResolvedValueOnce({ ok: false, message: "La création a échoué.", fieldErrors: {} });
     fireEvent.change(input, { target: { files: [new File(["ok"], "db.mp4", { type: "video/mp4" })] } });
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("La création a échoué."));

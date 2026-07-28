@@ -1,7 +1,7 @@
 "use client";
 
-import { upload } from "@vercel/blob/client";
 import { ChangeEvent, FormEvent, useRef, useState } from "react";
+import { uploadHeroVideoAction } from "@/app/actions/upload-hero-video";
 import {
   cleanupHeroVideoUploadAction,
   createHeroVideoAction,
@@ -10,22 +10,11 @@ import {
 } from "@/app/actions/hero-videos";
 import type { AdminHeroVideoItem } from "@/lib/hero/types";
 
-const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 4 * 1024 * 1024;
 const VIDEO_TYPES = new Set(["video/mp4", "video/webm"]);
 
 type EditableVideo = AdminHeroVideoItem;
 type Feedback = { kind: "error" | "success"; text: string } | null;
-
-function uploadErrorMessage(fileName: string, error: unknown) {
-  if (!(error instanceof Error) || !error.message.trim()) {
-    return `Le téléversement de ${fileName} a échoué.`;
-  }
-  const safeDetail = error.message
-    .replace(/vercel_blob_rw_[^\s"']+/gi, "[token masqué]")
-    .replace(/bearer\s+[^\s"']+/gi, "Bearer [token masqué]")
-    .slice(0, 500);
-  return `Le téléversement de ${fileName} a échoué : ${safeDetail}`;
-}
 
 function ArrowIcon({ direction }: { direction: "up" | "down" }) {
   return (
@@ -53,7 +42,6 @@ export function HeroVideoManager({ initialVideos }: { initialVideos: AdminHeroVi
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);
   const [uploadName, setUploadName] = useState("");
   const [feedback, setFeedback] = useState<Feedback>(null);
   const saveLock = useRef(false);
@@ -122,7 +110,7 @@ export function HeroVideoManager({ initialVideos }: { initialVideos: AdminHeroVi
     }
     const invalidSize = files.find((file) => file.size > MAX_VIDEO_SIZE);
     if (invalidSize) {
-      setFeedback({ kind: "error", text: `${invalidSize.name} dépasse la limite de 50 Mio.` });
+      setFeedback({ kind: "error", text: `${invalidSize.name} dépasse la limite de 4 Mio.` });
       return;
     }
 
@@ -145,18 +133,21 @@ export function HeroVideoManager({ initialVideos }: { initialVideos: AdminHeroVi
     try {
       for (const file of files) {
         setUploadName(file.name);
-        setProgress(0);
-        let blob;
+        let uploadedUrl = "";
         try {
-          blob = await upload(file.name, file, {
-            access: "public",
-            handleUploadUrl: "/api/admin/hero-videos/upload",
-            onUploadProgress: ({ percentage }) => setProgress(Math.round(percentage)),
-          });
-        } catch (error) {
+          const data = new FormData();
+          data.set("file", file);
+          const uploadResult = await uploadHeroVideoAction(data);
+          if (!uploadResult.ok) {
+            failed += 1;
+            lastError = uploadResult.message;
+            setFeedback({ kind: "error", text: lastError });
+            continue;
+          }
+          uploadedUrl = uploadResult.url;
+        } catch {
           failed += 1;
-          console.error("hero_video_upload_failed", { fileName: file.name, error });
-          lastError = uploadErrorMessage(file.name, error);
+          lastError = `Le téléversement de ${file.name} a échoué. Réessayez.`;
           setFeedback({ kind: "error", text: lastError });
           continue;
         }
@@ -164,7 +155,7 @@ export function HeroVideoManager({ initialVideos }: { initialVideos: AdminHeroVi
         let result;
         try {
           result = await createHeroVideoAction({
-            url: blob.url,
+            url: uploadedUrl,
             title,
             position: activeVideos.length + added,
             isVisible: false,
@@ -178,7 +169,7 @@ export function HeroVideoManager({ initialVideos }: { initialVideos: AdminHeroVi
         if (!result.ok) {
           failed += 1;
           lastError = result.message;
-          await cleanupOrphan(blob.url);
+          await cleanupOrphan(uploadedUrl);
           setFeedback({ kind: "error", text: lastError });
           continue;
         }
@@ -198,7 +189,6 @@ export function HeroVideoManager({ initialVideos }: { initialVideos: AdminHeroVi
       uploadLock.current = false;
       setUploading(false);
       setUploadName("");
-      setProgress(0);
     }
   }
 
@@ -233,7 +223,7 @@ export function HeroVideoManager({ initialVideos }: { initialVideos: AdminHeroVi
       <section className="admin-hero-toolbar" aria-label="Ajout de vidéos">
         <div>
           <strong>Bibliothèque vidéo</strong>
-          <p>MP4 ou WebM, 50 Mio maximum par fichier.</p>
+          <p>MP4 ou WebM, 4 Mio maximum par fichier.</p>
         </div>
         <input
           ref={inputRef}
@@ -253,8 +243,7 @@ export function HeroVideoManager({ initialVideos }: { initialVideos: AdminHeroVi
 
       {uploading && (
         <div className="admin-hero-progress" role="status" aria-live="polite">
-          <div><strong>Téléversement de {uploadName}</strong><span>{progress} %</span></div>
-          <progress max="100" value={progress}>{progress} %</progress>
+          <div><strong>Téléversement de {uploadName}</strong><span>En cours…</span></div>
         </div>
       )}
       {feedback && (

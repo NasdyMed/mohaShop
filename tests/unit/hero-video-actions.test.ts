@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireAdmin: vi.fn(),
-  handleUpload: vi.fn(),
   randomUUID: vi.fn(() => "12345678-1234-4234-8234-123456789abc"),
   create: vi.fn(),
   update: vi.fn(),
@@ -10,12 +9,13 @@ const mocks = vi.hoisted(() => ({
   finalizeDeletion: vi.fn(),
   findByUrl: vi.fn(),
   del: vi.fn(),
+  put: vi.fn(),
   revalidatePath: vi.fn(),
 }));
 vi.mock("@/lib/auth/require-admin", () => ({ requireAdmin: mocks.requireAdmin }));
-vi.mock("@vercel/blob/client", () => ({ handleUpload: mocks.handleUpload }));
 vi.mock("@vercel/blob", () => ({
   del: mocks.del,
+  put: mocks.put,
   BlobNotFoundError: class BlobNotFoundError extends Error {},
 }));
 vi.mock("node:crypto", async (original) => ({ ...(await original<typeof import("node:crypto")>()), randomUUID: mocks.randomUUID }));
@@ -29,32 +29,75 @@ vi.mock("@/lib/hero/admin-mutations", () => ({
 }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 
-import { POST } from "@/app/api/admin/hero-videos/upload/route";
+import { uploadHeroVideoAction } from "@/app/actions/upload-hero-video";
 import { cleanupHeroVideoUploadAction, createHeroVideoAction, deleteHeroVideoAction, updateHeroVideosAction } from "@/app/actions/hero-videos";
 
 const url = "https://store.public.blob.vercel-storage.com/hero/a.mp4";
 const input = { url, title: "Vidéo accueil", position: 0, isVisible: true };
 const mp4 = new Uint8Array([0, 0, 0, 12, 0x66, 0x74, 0x79, 0x70, 0, 0, 0, 0]);
+const webm = new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 0, 0, 0, 0]);
 
-describe("hero video upload route", () => {
-  beforeEach(() => { vi.clearAllMocks(); mocks.requireAdmin.mockResolvedValue({}); });
-  it("authentifie avant de lire la requête", async () => {
-    mocks.requireAdmin.mockRejectedValue(new Error("NEXT_REDIRECT"));
-    const request = { json: vi.fn() } as unknown as Request;
-    await expect(POST(request)).rejects.toThrow("NEXT_REDIRECT");
-    expect(request.json).not.toHaveBeenCalled();
+describe("hero video server upload", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.requireAdmin.mockResolvedValue({});
+    mocks.put.mockResolvedValue({ url: "https://store.public.blob.vercel-storage.com/hero/video.mp4" });
   });
-  it("génère un chemin serveur et les contraintes Blob", async () => {
-    mocks.handleUpload.mockImplementation(async ({ onBeforeGenerateToken }) => {
-      expect(await onBeforeGenerateToken("client/secret.mp4", null, false)).toEqual({
-        allowedContentTypes: ["video/mp4", "video/webm"], maximumSizeInBytes: 50 * 1024 * 1024, addRandomSuffix: true,
-      });
-      return { type: "blob.generate-client-token", clientToken: "token" };
+
+  it("authentifie avant de lire le fichier", async () => {
+    mocks.requireAdmin.mockRejectedValue(new Error("NEXT_REDIRECT"));
+    const data = new FormData();
+    data.set("file", new File([mp4], "video.mp4", { type: "video/mp4" }));
+    await expect(uploadHeroVideoAction(data)).rejects.toThrow("NEXT_REDIRECT");
+    expect(mocks.put).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["video/mp4", "mp4", mp4],
+    ["video/webm", "webm", webm],
+  ])("téléverse un fichier %s valide sous un chemin serveur", async (type, extension, bytes) => {
+    const data = new FormData();
+    data.set("file", new File([bytes], `original.${extension}`, { type }));
+    await expect(uploadHeroVideoAction(data)).resolves.toEqual({
+      ok: true,
+      url: "https://store.public.blob.vercel-storage.com/hero/video.mp4",
     });
-    const response = await POST(new Request("http://localhost", { method: "POST", body: JSON.stringify({ type: "blob.generate-client-token", payload: { pathname: "secret.mp4", multipart: false, clientPayload: "video/mp4" } }) }));
-    expect(response.status).toBe(200);
-    expect(mocks.handleUpload.mock.calls[0][0].body.payload.pathname).toMatch(/^hero\/[0-9a-f-]{36}\.mp4$/);
-    expect(mocks.handleUpload.mock.calls[0][0].body.payload.pathname).not.toContain("secret");
+    expect(mocks.put).toHaveBeenCalledWith(
+      expect.stringMatching(new RegExp(`^hero/[0-9a-f-]{36}\\.${extension}$`)),
+      expect.any(File),
+      { access: "public", addRandomSuffix: true },
+    );
+  });
+
+  it.each([
+    [null, /sélectionnez/i],
+    [new File(["text"], "video.txt", { type: "text/plain" }), /mp4 ou webm/i],
+    [new File([], "empty.mp4", { type: "video/mp4" }), /entre 1 octet et 4 mio/i],
+    [new File(["invalid"], "fake.mp4", { type: "video/mp4" }), /vidéo valide/i],
+  ])("refuse un fichier invalide", async (file, message) => {
+    const data = new FormData();
+    if (file) data.set("file", file);
+    await expect(uploadHeroVideoAction(data)).resolves.toMatchObject({ ok: false, message: expect.stringMatching(message) });
+    expect(mocks.put).not.toHaveBeenCalled();
+  });
+
+  it("refuse une vidéo supérieure à 4 Mio", async () => {
+    const file = new File([mp4], "large.mp4", { type: "video/mp4" });
+    Object.defineProperty(file, "size", { value: 4 * 1024 * 1024 + 1 });
+    const data = new FormData();
+    data.set("file", file);
+    await expect(uploadHeroVideoAction(data)).resolves.toMatchObject({ ok: false, message: expect.stringMatching(/4 mio/i) });
+    expect(mocks.put).not.toHaveBeenCalled();
+  });
+
+  it("masque l’erreur fournisseur", async () => {
+    mocks.put.mockRejectedValue(new Error("secret provider token"));
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const data = new FormData();
+    data.set("file", new File([mp4], "video.mp4", { type: "video/mp4" }));
+    await expect(uploadHeroVideoAction(data)).resolves.toMatchObject({ ok: false, message: expect.any(String) });
+    expect(JSON.stringify(log.mock.calls)).not.toContain("secret provider token");
+    log.mockRestore();
   });
 });
 
