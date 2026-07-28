@@ -168,4 +168,20 @@ describe("hero video actions", () => {
     expect(mocks.del.mock.invocationCallOrder[0]).toBeLessThan(mocks.finalizeDeletion.mock.invocationCallOrder[0]);
     expect(mocks.finalizeDeletion).toHaveBeenCalledWith("c123456789012345678901234", url);
   });
+  it("finalise aussi une suppression Blob déjà absente", async () => {
+    const { BlobNotFoundError } = await import("@vercel/blob");
+    mocks.markForDeletion.mockResolvedValue({ url });
+    mocks.del.mockRejectedValue(new BlobNotFoundError());
+    await expect(deleteHeroVideoAction("c123456789012345678901234")).resolves.toEqual({ ok: true });
+    expect(mocks.finalizeDeletion).toHaveBeenCalledWith("c123456789012345678901234", url);
+    expect(mocks.revalidatePath).toHaveBeenCalled();
+  });
+
+  it("rend les retries après finalisation idempotents", async () => {
+    const { HeroVideoMutationError } = await import("@/lib/hero/admin-mutations");
+    mocks.markForDeletion.mockRejectedValue(new HeroVideoMutationError("NOT_FOUND"));
+    await expect(deleteHeroVideoAction("c123456789012345678901234")).resolves.toEqual({ ok: true });
+    expect(mocks.del).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).toHaveBeenCalled();
+  });
 });

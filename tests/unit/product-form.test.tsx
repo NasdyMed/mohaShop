@@ -60,6 +60,21 @@ describe("ProductForm", () => {
     expect(mocks.save.mock.calls[0][0].variants[0].color).toBe("Marron");
   });
 
+  it("preserves an unknown legacy color in variants, gallery and payload", async () => {
+    mocks.save.mockResolvedValue({ ok: false, code: "INVALID", message: "stop", fieldErrors: {} });
+    const user = userEvent.setup();
+    render(<ProductForm initialValue={{ ...validDraft,
+      images: [{ ...validDraft.images[0], color: " Rouge " }],
+      variants: [{ id: "v1", historical: true, ...validDraft.variants[0], color: " Rouge " }],
+    }} />);
+    expect(screen.getByRole("checkbox", { name: "Rouge (historique)" })).toBeChecked();
+    expect(screen.getByRole("tab", { name: /Rouge/ })).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Enregistrer le produit" }));
+    await waitFor(() => expect(mocks.save).toHaveBeenCalled());
+    expect(mocks.save.mock.calls[0][0].variants[0].color).toBe("Rouge");
+    expect(mocks.save.mock.calls[0][0].images[0].color).toBe("Rouge");
+  });
+
   it("groups an interleaved initial gallery and submits unique global positions", async () => {
     mocks.save.mockResolvedValue({ ok: false, code: "INVALID", message: "stop", fieldErrors: {} });
     const user = userEvent.setup();

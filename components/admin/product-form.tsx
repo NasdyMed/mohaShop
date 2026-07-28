@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { saveProductAction } from "@/app/actions/save-product";
 import { uploadProductImageAction } from "@/app/actions/upload-product-image";
 import { LoadingLabel } from "@/components/ui/loading-label";
-import { normalizeKnownProductColor, normalizeProductColor } from "@/lib/catalog/color-swatches";
+import { normalizeKnownProductColor } from "@/lib/catalog/color-swatches";
 import { EditableImage, MAX_IMAGES_PER_COLOR, moveImageWithinColor, normalizeImagePositions, orderImagesByColor } from "@/lib/catalog/product-image-groups";
 import { ProductImageGroups } from "./product-image-groups";
 import { EditableVariant, VariantEditor } from "./variant-editor";
@@ -20,7 +20,10 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
   const router = useRouter();
   const [value, setValue] = useState<Value>(() => {
     const initial = initialValue ?? empty;
-    const variants = initial.variants.map((variant) => ({ ...variant, color: normalizeProductColor(variant.color) }));
+    const variants = initial.variants.map((variant) => ({
+      ...variant,
+      color: normalizeKnownProductColor(variant.color) ?? variant.color.trim(),
+    }));
     const firstColor = variants[0]?.color ?? null;
     const colors = [...new Set(variants.filter((variant) => !variant.removed).map((variant) => variant.color))];
     const images = initial.images.map((image) => ({

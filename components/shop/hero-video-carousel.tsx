@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { HeroVideoItem } from "@/lib/hero/types";
 
@@ -51,17 +51,7 @@ export function HeroVideoCarousel({ videos, fallback }: { videos: HeroVideoItem[
     [safeActiveIndex, nextIndex],
   );
 
-  useEffect(() => {
-    if (reducedMotion !== false || safeActiveIndex < 0) return;
-    for (const [id, element] of videoRefs.current) {
-      if (id === videos[safeActiveIndex]?.id) void element.play().catch(() => undefined);
-      else element.pause();
-    }
-  }, [reducedMotion, safeActiveIndex, videos]);
-
-  if (reducedMotion !== false || videos.length === 0 || safeActiveIndex < 0) return fallback;
-
-  const failVideo = (id: string) => {
+  const failVideo = useCallback((id: string) => {
     const failed = new Set(failedIdsRef.current);
     failed.add(id);
     failedIdsRef.current = failed;
@@ -74,7 +64,22 @@ export function HeroVideoCarousel({ videos, fallback }: { videos: HeroVideoItem[
         setActiveIndex(next);
       }
     }
-  };
+  }, [videos]);
+
+  useEffect(() => {
+    if (reducedMotion !== false || safeActiveIndex < 0) return;
+    const activeId = videos[safeActiveIndex]?.id;
+    let obsolete = false;
+    for (const [id, element] of videoRefs.current) {
+      if (id === activeId) void element.play().catch(() => {
+        if (!obsolete && videos[activeIndexRef.current]?.id === id) failVideo(id);
+      });
+      else element.pause();
+    }
+    return () => { obsolete = true; };
+  }, [reducedMotion, safeActiveIndex, videos, listKey, failVideo]);
+
+  if (reducedMotion !== false || videos.length === 0 || safeActiveIndex < 0) return fallback;
 
   const selectVideo = (index: number) => {
     activeIndexRef.current = index;

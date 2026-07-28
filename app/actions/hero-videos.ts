@@ -28,6 +28,9 @@ function invalidate() {
 function mutationFailure(error: unknown) {
   return failure(error instanceof HeroVideoMutationError ? error.code : "UNKNOWN");
 }
+function isMissingBlob(error: unknown) {
+  return error instanceof BlobNotFoundError;
+}
 async function inspectRemoteVideo(url: string) {
   let response: Response;
   try { response = await fetch(url, { headers: { Range: "bytes=0-11" }, redirect: "manual" }); }
@@ -79,7 +82,7 @@ export async function cleanupHeroVideoUploadAction(raw: unknown) {
     await del(raw);
     return { ok: true as const };
   } catch (error) {
-    if (error instanceof BlobNotFoundError) return { ok: true as const };
+    if (isMissingBlob(error)) return { ok: true as const };
     console.error("hero_video_upload_cleanup_failed", { category: "provider" });
     return { ok: false as const, message: "Le fichier temporaire n’a pas pu être nettoyé." };
   }
@@ -106,6 +109,20 @@ export async function deleteHeroVideoAction(id: unknown) {
       await finalizeHeroVideoDeletion(parsed.data, url);
       return { ok: true as const };
     }
-    catch { console.error("hero_video_blob_delete_failed", { category: "provider" }); return { ok: true as const, warning: "Le fichier distant n’a pas pu être supprimé." }; }
-  } catch (error) { return mutationFailure(error); }
+    catch (error) {
+      if (isMissingBlob(error)) {
+        await finalizeHeroVideoDeletion(parsed.data, url);
+        invalidate();
+        return { ok: true as const };
+      }
+      console.error("hero_video_blob_delete_failed", { category: "provider" });
+      return { ok: true as const, warning: "Le fichier distant n’a pas pu être supprimé." };
+    }
+  } catch (error) {
+    if (error instanceof HeroVideoMutationError && error.code === "NOT_FOUND") {
+      invalidate();
+      return { ok: true as const };
+    }
+    return mutationFailure(error);
+  }
 }

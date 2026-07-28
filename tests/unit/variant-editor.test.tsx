@@ -29,6 +29,18 @@ describe("VariantEditor stock matrix", () => {
     expect(screen.getByRole("spinbutton", { name: "Stock Noir, pointure 38" })).toHaveValue(2);
   });
 
+  it("shows an active legacy color as historical and allows removing it", async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={[{ id: "v1", historical: true, color: "Rouge", size: "38", sku: "RED-38", stock: 2 }]} />);
+    const legacy = screen.getByRole("checkbox", { name: "Rouge (historique)" });
+    expect(legacy).toBeChecked();
+    expect(screen.getByRole("spinbutton", { name: "Stock Rouge, pointure 38" })).toHaveValue(2);
+    await user.click(legacy);
+    expect(screen.getByRole("dialog")).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Confirmer le retrait" }));
+    expect(JSON.parse(screen.getByTestId("value").textContent!)[0]).toEqual(expect.objectContaining({ color: "Rouge", removed: true, stock: 0 }));
+  });
+
   it("selecting two colors and sizes yields four variants and updates stock immutably", async () => {
     const user = userEvent.setup();
     render(<Harness />);

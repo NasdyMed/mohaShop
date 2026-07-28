@@ -116,11 +116,42 @@ describe("HeroVideoCarousel", () => {
     expect(await screen.findByText("fallback")).toBeInTheDocument();
   });
 
-  it("does not crash when play rejects", async () => {
+  it("marks the active video failed and advances when play rejects", async () => {
     play.mockRejectedValueOnce(new Error("blocked"));
     render(<HeroVideoCarousel videos={videos} fallback={<div>fallback</div>} />);
-    await waitFor(() => expect(play).toHaveBeenCalled());
-    expect(screen.getByText("Première")).toBeInTheDocument();
+    expect(await screen.findByText("Deuxième")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Afficher la vidéo 1 sur 3" })).toBeDisabled();
+  });
+
+  it("ignores an obsolete play rejection after a manual selection", async () => {
+    let rejectFirst!: (reason: Error) => void;
+    play.mockReturnValueOnce(new Promise((_, reject) => { rejectFirst = reject; })).mockResolvedValueOnce();
+    render(<HeroVideoCarousel videos={videos} fallback={<div>fallback</div>} />);
+    await waitFor(() => expect(play).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole("button", { name: "Afficher la vidéo 2 sur 3" }));
+    expect(await screen.findByText("Deuxième")).toBeInTheDocument();
+    await act(async () => rejectFirst(new Error("late rejection")));
+    expect(screen.getByText("Deuxième")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Afficher la vidéo 1 sur 3" })).not.toBeDisabled();
+  });
+
+  it("ignores an obsolete play rejection after the list changes", async () => {
+    let rejectFirst!: (reason: Error) => void;
+    play.mockReturnValueOnce(new Promise((_, reject) => { rejectFirst = reject; })).mockResolvedValueOnce();
+    const { rerender } = render(<HeroVideoCarousel videos={videos} fallback={<div>fallback</div>} />);
+    await waitFor(() => expect(play).toHaveBeenCalledTimes(1));
+    rerender(<HeroVideoCarousel videos={[videos[1]]} fallback={<div>fallback</div>} />);
+    expect(await screen.findByText("Deuxième")).toBeInTheDocument();
+    await act(async () => rejectFirst(new Error("late rejection")));
+    expect(screen.getByText("Deuxième")).toBeInTheDocument();
+    expect(screen.queryByText("fallback")).not.toBeInTheDocument();
+  });
+
+  it("falls back after every active play attempt rejects without looping", async () => {
+    play.mockRejectedValue(new Error("blocked"));
+    render(<HeroVideoCarousel videos={videos} fallback={<div>fallback</div>} />);
+    expect(await screen.findByText("fallback")).toBeInTheDocument();
+    expect(play).toHaveBeenCalledTimes(videos.length);
   });
 
   it("resets coherently when the video list changes", async () => {

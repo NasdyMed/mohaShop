@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 
 import { ConfirmRemovalDialog } from "@/components/admin/confirm-removal-dialog";
-import { colorSwatch, productColorOptions } from "@/lib/catalog/color-swatches";
+import { colorSwatch, normalizeKnownProductColor, productColorOptions } from "@/lib/catalog/color-swatches";
 import {
   buildVariantMatrix,
   productSizes,
@@ -29,6 +29,7 @@ export function VariantEditor({ productSlug, value, onChange, disabled, errors =
   onConfirmedColorRemoval: (color: string) => void;
 }) {
   const active = value.filter((variant) => !variant.removed);
+  const legacyColors = [...new Set(active.map((variant) => variant.color).filter((color) => !normalizeKnownProductColor(color)))];
   const [selectedColors, setSelectedColors] = useState(() => [...new Set(active.map((variant) => variant.color))]);
   const [selectedSizes, setSelectedSizes] = useState(() => [...new Set(active.map((variant) => variant.size))]);
   const [pending, setPending] = useState<Removal | null>(null);
@@ -123,6 +124,12 @@ export function VariantEditor({ productSlug, value, onChange, disabled, errors =
           <input type="checkbox" aria-label={color} checked={selectedColors.includes(color)} onChange={(event) => toggleColor(color, event.currentTarget)}/>
           <span className="variant-swatch" style={{ backgroundColor: colorSwatch(color).background }} aria-hidden="true"/>
           <span>{color}</span>
+        </label>)}
+        {legacyColors.map((color) => <label className="variant-matrix-color is-historical" key={color}>
+          <input type="checkbox" aria-label={`${color} (historique)`} checked
+            onChange={(event) => requestRemoval({ kind: "color", value: color, trigger: event.currentTarget })}/>
+          <span className="variant-swatch" style={{ backgroundColor: colorSwatch(color).background }} aria-hidden="true"/>
+          <span>{color} (historique)</span>
         </label>)}
       </div>
     </fieldset>

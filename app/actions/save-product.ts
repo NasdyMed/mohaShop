@@ -4,10 +4,10 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import { ProductMutationError, saveProduct } from "@/lib/catalog/admin-mutations";
 import { productInputSchema } from "@/lib/validation/product";
 
-type FailureCode = "INVALID" | "NOT_FOUND" | "TAMPERED_VARIANT" | "DUPLICATE_SLUG" | "DUPLICATE_SKU" | "DUPLICATE_VARIANT" | "UNKNOWN";
+type FailureCode = "INVALID" | "INVALID_COLOR" | "NOT_FOUND" | "TAMPERED_VARIANT" | "DUPLICATE_SLUG" | "DUPLICATE_SKU" | "DUPLICATE_VARIANT" | "UNKNOWN";
 type Result = { ok: true; id: string; slug: string; previousSlug?: string } | { ok: false; code: FailureCode; message: string; fieldErrors: Record<string, string[]> };
 const messages: Record<FailureCode, string> = {
-  INVALID: "Vérifiez les champs du produit.", NOT_FOUND: "Produit introuvable.", TAMPERED_VARIANT: "Une déclinaison est invalide.",
+  INVALID: "Vérifiez les champs du produit.", INVALID_COLOR: "Choisissez une couleur proposée.", NOT_FOUND: "Produit introuvable.", TAMPERED_VARIANT: "Une déclinaison est invalide.",
   DUPLICATE_SLUG: "Ce slug est déjà utilisé.", DUPLICATE_SKU: "Ce SKU est déjà utilisé.",
   DUPLICATE_VARIANT: "Cette pointure et cette couleur existent déjà.", UNKNOWN: "L’enregistrement a échoué.",
 };
@@ -36,6 +36,6 @@ export async function saveProductAction(raw: unknown): Promise<Result> {
   } catch (error) {
     const code = error instanceof ProductMutationError ? error.code : "UNKNOWN";
     if (code === "UNKNOWN") console.error("product_save_failed", { category: "unexpected" });
-    return { ok: false, code, message: messages[code], fieldErrors: {} };
+    return { ok: false, code, message: messages[code], fieldErrors: code === "INVALID_COLOR" ? { variants: [messages.INVALID_COLOR] } : {} };
   }
 }
