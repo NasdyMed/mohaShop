@@ -1,10 +1,11 @@
 // @vitest-environment node
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { isSafeTestDatabaseUrl } from "../support/test-database-url";
 const run = `product_${randomUUID().replaceAll("-", "")}`; let db: typeof import("@/lib/db").db; let saveProduct: typeof import("@/lib/catalog/admin-mutations").saveProduct;
 const draft = (suffix:string) => ({ name:`Bottes ${suffix}`,description:"Description de produit de test isolée.",priceDh:700,slug:`${run}-${suffix}`,isVisible:false,images:[],variants:[] });
 async function cleanup(){await db.order.deleteMany({where:{items:{some:{variant:{product:{slug:{startsWith:run}}}}}}});await db.product.deleteMany({where:{slug:{startsWith:run}}});}
-beforeAll(async()=>{const raw=process.env.TEST_DATABASE_URL;if(!raw)throw new Error("Integration precondition: set exclusive TEST_DATABASE_URL with a database name containing test.");const url=new URL(raw);if(!/^postgres(?:ql)?:$/.test(url.protocol)||!/test/i.test(decodeURIComponent(url.pathname.slice(1))))throw new Error("Refusing non-test PostgreSQL database.");process.env.DATABASE_URL=raw;({db}=await import("@/lib/db"));({saveProduct}=await import("@/lib/catalog/admin-mutations"));await cleanup()});
+beforeAll(async()=>{const raw=process.env.TEST_DATABASE_URL;if(!raw)throw new Error("Integration precondition: set exclusive TEST_DATABASE_URL named test or ending in _test.");if(!isSafeTestDatabaseUrl(raw))throw new Error("Refusing non-test PostgreSQL database.");process.env.DATABASE_URL=raw;({db}=await import("@/lib/db"));({saveProduct}=await import("@/lib/catalog/admin-mutations"));await cleanup()});
 afterAll(async()=>{if(db){await cleanup();await db.$disconnect()}});
 describe.sequential("saveProduct PostgreSQL integration",()=>{
  it("crée un brouillon puis publie avec image, déclinaison et stock",async()=>{const created=await saveProduct(draft("create"));const updated=await saveProduct({...draft("create"),id:created.id,isVisible:true,images:[{url:"https://images.unsplash.com/a.webp",alt:"Botte test",color:"Noir",position:0}],variants:[{sku:`${run}-SKU`,size:"38",color:"Noir",stock:9}]});expect(updated.id).toBe(created.id);await expect(db.product.findUniqueOrThrow({where:{id:created.id},include:{variants:true,images:true}})).resolves.toMatchObject({isVisible:true,variants:[{stock:9}],images:[{position:0}]})});
