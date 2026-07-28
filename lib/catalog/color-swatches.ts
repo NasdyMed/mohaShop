@@ -24,10 +24,14 @@ const colorAliases: Record<string, ProductColor> = {
   navy: "Bleu",
 };
 
-export function normalizeProductColor(color: string): ProductColor {
+export function normalizeKnownProductColor(color: string): ProductColor | null {
   const normalized = color.trim().toLocaleLowerCase("fr");
   const paletteColor = productColorOptions.find((option) => option.toLocaleLowerCase("fr") === normalized);
-  return paletteColor ?? colorAliases[normalized] ?? "Noir";
+  return paletteColor ?? colorAliases[normalized] ?? null;
+}
+
+export function normalizeProductColor(color: string): ProductColor {
+  return normalizeKnownProductColor(color) ?? "Noir";
 }
 
 export function colorSwatch(color: string) {

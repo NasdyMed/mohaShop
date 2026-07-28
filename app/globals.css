@@ -153,6 +153,8 @@ input:focus-visible + span, a:focus-visible, button:focus-visible { outline: 3px
 .product-image-tab small { min-width: 22px; padding: 4px 6px; background: #eee4d8; color: #5b4637; text-align: center; }
 .product-image-tab[aria-selected="true"] { border-color: #171310; background: #171310; color: #fffdfa; box-shadow: 0 0 0 3px rgba(204,136,0,.25); }
 .product-image-tab[aria-selected="true"] small { background: #cc8800; color: #171310; }
+.product-image-tab.is-error { border-color: var(--admin-danger); }
+.product-image-tab-error { width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; background: var(--admin-danger); color: #fff; font-weight: 800; }
 .product-image-tab:hover:not(:disabled) { border-color: #965d35; transform: translateY(-1px); }
 .product-image-tab:focus-visible, .product-image-group-toolbar button:focus-visible { outline: 3px solid rgba(204,136,0,.4); outline-offset: 2px; }
 .product-image-group-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px; border-left: 4px solid #cc8800; background: #f3eadf; }

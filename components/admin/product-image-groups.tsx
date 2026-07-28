@@ -30,7 +30,13 @@ export function ProductImageGroups(props: Props) {
   const [activeColor, setActiveColor] = useState(props.colors[0] ?? "");
   const input = useRef<HTMLInputElement>(null);
   const tabs = useRef<Array<HTMLButtonElement | null>>([]);
-  const selectedColor = props.colors.includes(activeColor) ? activeColor : (props.colors[0] ?? "");
+  const erroredIndexes = [...new Set(Object.keys(props.errors).flatMap((path) => {
+    const match = /^images\.(\d+)\./.exec(path);
+    return match ? [Number(match[1])] : [];
+  }))].sort((a, b) => a - b);
+  const errorColors = new Set(erroredIndexes.flatMap((index) => props.images[index]?.color ? [props.images[index].color] : []));
+  const firstErrorColor = props.colors.find((color) => errorColors.has(color));
+  const selectedColor = firstErrorColor ?? (props.colors.includes(activeColor) ? activeColor : (props.colors[0] ?? ""));
   const groups = groupImagesByColor(props.images, props.colors);
   const active = groups.find((group) => group.color === selectedColor) ?? groups[0];
   const count = active?.images.length ?? 0;
@@ -40,6 +46,7 @@ export function ProductImageGroups(props: Props) {
     <div className="product-image-tabs" role="tablist" aria-label="Couleurs des images">
       {groups.map((group, index) => {
         const selected = group.color === selectedColor;
+        const hasError = errorColors.has(group.color);
         const tabId = `product-images-tab-${index}`;
         const panelId = `product-images-panel-${index}`;
         const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
@@ -55,9 +62,9 @@ export function ProductImageGroups(props: Props) {
         };
         return <button type="button" role="tab" id={tabId} aria-controls={panelId} aria-selected={selected}
         tabIndex={selected ? 0 : -1} ref={(node) => { tabs.current[index] = node; }} onKeyDown={onKeyDown}
-        className="product-image-tab" key={group.color} onClick={() => setActiveColor(group.color)}>
+        className={`product-image-tab${hasError ? " is-error" : ""}`} key={group.color} onClick={() => setActiveColor(group.color)}>
         <span style={{ backgroundColor: colorSwatch(group.color).background }} aria-hidden="true"/>{group.color}
-        <small>{group.images.length}</small>
+        <small>{group.images.length}</small>{hasError && <span className="product-image-tab-error" aria-label="erreur">!</span>}
       </button>;
       })}
     </div>

@@ -121,4 +121,13 @@ describe("ProductImageGroups", () => {
     await user.keyboard("{Home}");
     expect(noir).toHaveFocus();
   });
+
+  it("activates and marks the first color containing a server image error", () => {
+    render(<ProductImageGroups colors={["Noir", "Cognac"]} images={images} errors={{ "images.3.alt": ["Alt Cognac invalide."] }}
+      onUploadFiles={vi.fn()} onChangeAlt={vi.fn()} onMoveWithinColor={vi.fn()} onDelete={vi.fn()} />);
+    const cognac = screen.getByRole("tab", { name: /Cognac.*erreur/i });
+    expect(cognac).toHaveAttribute("aria-selected", "true");
+    expect(cognac).toHaveClass("is-error");
+    expect(screen.getByText("Alt Cognac invalide.")).toBeVisible();
+  });
 });

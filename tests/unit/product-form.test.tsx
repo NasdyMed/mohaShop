@@ -30,6 +30,36 @@ beforeEach(() => vi.clearAllMocks());
 afterEach(cleanup);
 
 describe("ProductForm", () => {
+  it("canonicalizes legacy image colors for grouping, capacity and payload", async () => {
+    mocks.save.mockResolvedValue({ ok: false, code: "INVALID", message: "stop", fieldErrors: {} });
+    const legacy = Array.from({ length: 6 }, (_, position) => ({
+      url: `https://example.com/noir-${position}.webp`, alt: `Noir ${position}`,
+      color: position % 2 ? "NOIR" : " noir ", position,
+    }));
+    const user = userEvent.setup();
+    render(<ProductForm initialValue={{ ...validDraft, images: legacy }} />);
+    expect(screen.getByText("6 images sur 6")).toBeVisible();
+    expect(screen.getByRole("button", { name: /ajouter des images/i })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Enregistrer le produit" }));
+    await waitFor(() => expect(mocks.save).toHaveBeenCalled());
+    expect(mocks.save.mock.calls[0][0].images).toHaveLength(6);
+    expect(mocks.save.mock.calls[0][0].images.every((image: typeof legacy[0]) => image.color === "Noir")).toBe(true);
+  });
+
+  it("canonicalizes the Brun alias to Marron for variants and images", async () => {
+    mocks.save.mockResolvedValue({ ok: false, code: "INVALID", message: "stop", fieldErrors: {} });
+    const user = userEvent.setup();
+    render(<ProductForm initialValue={{ ...validDraft,
+      images: [{ ...validDraft.images[0], color: "Brun" }],
+      variants: [{ ...validDraft.variants[0], color: "Brun" }],
+    }} />);
+    expect(screen.getByRole("tab", { name: /Marron/ })).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Enregistrer le produit" }));
+    await waitFor(() => expect(mocks.save).toHaveBeenCalled());
+    expect(mocks.save.mock.calls[0][0].images[0].color).toBe("Marron");
+    expect(mocks.save.mock.calls[0][0].variants[0].color).toBe("Marron");
+  });
+
   it("groups an interleaved initial gallery and submits unique global positions", async () => {
     mocks.save.mockResolvedValue({ ok: false, code: "INVALID", message: "stop", fieldErrors: {} });
     const user = userEvent.setup();
