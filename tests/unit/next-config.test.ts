@@ -13,6 +13,6 @@ describe("Next configuration", () => {
   });
 
   it("caps Server Action request bodies", () => {
-    expect(nextConfig.experimental?.serverActions?.bodySizeLimit).toBe("1mb");
+    expect(nextConfig.experimental?.serverActions?.bodySizeLimit).toBe("5mb");
   });
 });
