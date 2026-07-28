@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
     slug: "bottine-atlas",
     name: "Bottine Atlas",
     priceDh: 1290,
+    compareAtPriceDh: 1590,
     image: { id: "image-1", url: "/atlas.jpg", alt: "Bottine Atlas" },
     images: [
       { id: "image-1", url: "/atlas.jpg", alt: "Bottine Atlas", color: "Cognac" },
@@ -60,6 +61,8 @@ describe("catalog layout", () => {
     expect(screen.queryByRole("button", { name: "Choisir une taille" })).toBeNull();
     expect(screen.queryByText("Voir le modèle")).toBeNull();
     expect(document.querySelector(".product-card-index")).toBeNull();
+    expect(screen.getByText("PROMO −19 %")).toBeVisible();
+    expect(screen.getByText("1.590 DH").tagName).toBe("DEL");
   });
 
   it("changes the card image when another available color is selected", async () => {

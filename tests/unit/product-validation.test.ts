@@ -45,6 +45,23 @@ describe("productInputSchema", () => {
     expect(productInputSchema.safeParse({ ...valid, variants: [{ ...valid.variants[0], sku: "BAD SKU" }] }).success).toBe(false);
     expect(productInputSchema.safeParse({ ...valid, variants: [{ ...valid.variants[0], stock: Number.MAX_SAFE_INTEGER }] }).success).toBe(false);
   });
+  it("accepte un prix avant promotion facultatif supérieur au prix de vente", () => {
+    expect(productInputSchema.parse(valid).compareAtPriceDh).toBeNull();
+    expect(productInputSchema.parse({ ...valid, compareAtPriceDh: 1099 }).compareAtPriceDh).toBe(1099);
+  });
+
+  it("rejette un prix avant promotion inférieur ou égal au prix de vente", () => {
+    for (const compareAtPriceDh of [899, 898]) {
+      const result = productInputSchema.safeParse({ ...valid, compareAtPriceDh });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues).toContainEqual(expect.objectContaining({
+          path: ["compareAtPriceDh"],
+        }));
+      }
+    }
+  });
+
   it("rejette les identifiants persistés dupliqués au second chemin", () => {
     const imageId = "cm12345678901234567890123";
     const variantId = "cm22345678901234567890123";

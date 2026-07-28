@@ -23,6 +23,7 @@ const base = {
   description: "Une description suffisamment longue pour le test.",
   descriptionAr: null,
   priceDh: 850,
+  compareAtPriceDh: 1090,
   slug: "botte-atlas",
   isVisible: false,
   images: [],
@@ -37,6 +38,20 @@ beforeEach(() => {
 });
 
 describe("saveProduct color enforcement", () => {
+  it("persists the reference price when creating a product", async () => {
+    await saveProduct(base);
+    expect(mocks.tx.product.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ priceDh: 850, compareAtPriceDh: 1090 }),
+    }));
+  });
+
+  it("clears the reference price when updating a product", async () => {
+    await saveProduct({ ...base, id: productId, compareAtPriceDh: null });
+    expect(mocks.tx.product.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ priceDh: 850, compareAtPriceDh: null }),
+    }));
+  });
+
   it("rejects a forged unknown color on a new variant", async () => {
     await expect(saveProduct({
       ...base,

@@ -3,10 +3,10 @@
 import { useCallback, useState } from "react";
 import { ProductPurchase } from "@/components/cart/product-purchase";
 import { ProductGallery } from "@/components/shop/product-gallery";
-import { formatPriceDh } from "@/lib/catalog/price";
 import type { CatalogImage, CatalogVariant } from "@/lib/catalog/queries";
 import { localizeProduct } from "@/lib/i18n/product";
 import { useStorefrontI18n } from "./locale-provider";
+import { ProductPrice } from "./product-price";
 
 type Props = {
   product: {
@@ -16,6 +16,7 @@ type Props = {
     description: string;
     descriptionAr: string | null;
     priceDh: number;
+    compareAtPriceDh: number | null;
     image: CatalogImage | null;
     images: CatalogImage[];
     variants: CatalogVariant[];
@@ -36,7 +37,7 @@ export function ProductDetailExperience({ product }: Props) {
     <div className="product-info" aria-label={`${dictionary.product.addToCart} ${localizedProduct.name}`}>
       <h1>{localizedProduct.name}</h1>
       <p className="product-detail-category">{dictionary.product.category}</p>
-      <div className="detail-price-row"><p className="detail-price">{formatPriceDh(product.priceDh)}</p><span>{dictionary.product.vatIncluded}</span></div>
+      <div className="detail-price-row"><ProductPrice priceDh={product.priceDh} compareAtPriceDh={product.compareAtPriceDh} savingsLabel={dictionary.product.savings} variant="detail"/><span>{dictionary.product.vatIncluded}</span></div>
       <p className="description">{localizedProduct.description}</p>
       {product.available ? <ProductPurchase product={{ slug: product.slug, name: localizedProduct.name, imageUrl: product.image?.url ?? null, unitPriceDh: product.priceDh }} variants={product.variants} images={product.images} onVariantChange={selectVariant}/> : <p className="sold-out">{dictionary.product.soldOut}</p>}
       <aside className="service-note"><div><span aria-hidden="true">✓</span><p><strong>{dictionary.promises.payment}</strong><small>{dictionary.promises.paymentCopy}</small></p></div><div><span aria-hidden="true">→</span><p><strong>{dictionary.promises.delivery}</strong><small>{dictionary.promises.guestCopy}</small></p></div></aside>

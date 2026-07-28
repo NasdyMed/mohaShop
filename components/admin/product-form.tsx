@@ -7,13 +7,14 @@ import { saveProductAction } from "@/app/actions/save-product";
 import { uploadProductImageAction } from "@/app/actions/upload-product-image";
 import { LoadingLabel } from "@/components/ui/loading-label";
 import { normalizeKnownProductColor } from "@/lib/catalog/color-swatches";
+import { getProductPromotion } from "@/lib/catalog/promotion";
 import { EditableImage, MAX_IMAGES_PER_COLOR, moveImageWithinColor, normalizeImagePositions, orderImagesByColor } from "@/lib/catalog/product-image-groups";
 import { ProductImageGroups } from "./product-image-groups";
 import { EditableVariant, VariantEditor } from "./variant-editor";
 
-type Value = { id?: string; name: string; nameAr: string; description: string; descriptionAr: string; priceDh: number; slug: string; isVisible: boolean; images: EditableImage[]; variants: EditableVariant[] };
+type Value = { id?: string; name: string; nameAr: string; description: string; descriptionAr: string; priceDh: number; compareAtPriceDh: number | null; slug: string; isVisible: boolean; images: EditableImage[]; variants: EditableVariant[] };
 type Errors = Record<string, string[]>;
-const empty: Value = { name: "", nameAr: "", description: "", descriptionAr: "", priceDh: 1, slug: "", isVisible: false, images: [], variants: [] };
+const empty: Value = { name: "", nameAr: "", description: "", descriptionAr: "", priceDh: 1, compareAtPriceDh: null, slug: "", isVisible: false, images: [], variants: [] };
 const FieldError = ({ errors, id }: { errors?: string[]; id?: string }) => errors?.map((error, index) => <p className="field-error" id={index === 0 ? id : undefined} key={error}>{error}</p>);
 
 export function ProductForm({ initialValue }: { initialValue?: Value }) {
@@ -45,6 +46,7 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
   const activeVariants = value.variants.filter((variant) => !variant.removed);
   const canPublish = value.images.length > 0 && activeVariants.length > 0;
   const colors = [...new Set(activeVariants.map((variant) => variant.color))];
+  const promotion = getProductPromotion(value.priceDh, value.compareAtPriceDh);
 
   async function uploadImages(color: string, requestedFiles: File[]) {
     const files = requestedFiles.slice(0, Math.max(0, MAX_IMAGES_PER_COLOR - value.images.filter((image) => image.color === color).length));
@@ -133,7 +135,9 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
         <label>Nom<input disabled={busy || uploading} required minLength={2} maxLength={120} aria-invalid={!!errors.name} aria-describedby={errors.name ? "product-name-error" : undefined} value={value.name} onChange={(event) => setValue({ ...value, name: event.target.value })}/></label><FieldError id="product-name-error" errors={errors.name}/>
         <label>Nom en arabe<input dir="rtl" disabled={busy || uploading} minLength={2} maxLength={120} aria-invalid={!!errors.nameAr} aria-describedby={errors.nameAr ? "product-name-ar-error" : undefined} value={value.nameAr} onChange={(event) => setValue({ ...value, nameAr: event.target.value })}/></label><FieldError id="product-name-ar-error" errors={errors.nameAr}/>
         <label>Slug<input disabled={busy || uploading} required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" maxLength={120} aria-invalid={!!errors.slug} aria-describedby={errors.slug ? "product-slug-error" : undefined} value={value.slug} onChange={(event) => setValue({ ...value, slug: event.target.value })}/></label><FieldError id="product-slug-error" errors={errors.slug}/>
-        <label>Prix (DH)<input disabled={busy || uploading} required type="number" min={1} max={1_000_000} aria-invalid={!!errors.priceDh} aria-describedby={errors.priceDh ? "product-price-error" : undefined} value={value.priceDh} onChange={(event) => setValue({ ...value, priceDh: Number(event.target.value) })}/></label><FieldError id="product-price-error" errors={errors.priceDh}/>
+        <label>Prix de vente (DH)<input disabled={busy || uploading} required type="number" min={1} max={1_000_000} aria-invalid={!!errors.priceDh} aria-describedby={errors.priceDh ? "product-price-error" : undefined} value={value.priceDh} onChange={(event) => setValue({ ...value, priceDh: Number(event.target.value) })}/></label><FieldError id="product-price-error" errors={errors.priceDh}/>
+        <label>Prix avant promotion (DH)<input disabled={busy || uploading} type="number" min={1} max={1_000_000} aria-invalid={!!errors.compareAtPriceDh} aria-describedby={errors.compareAtPriceDh ? "product-compare-price-error" : undefined} value={value.compareAtPriceDh ?? ""} onChange={(event) => setValue({ ...value, compareAtPriceDh: event.target.value === "" ? null : Number(event.target.value) })}/></label><FieldError id="product-compare-price-error" errors={errors.compareAtPriceDh}/>
+        {promotion ? <p className="admin-promotion-preview">Promotion active : −{promotion.discountPercent} % · économie de {promotion.savingsDh} DH</p> : null}
         <label className="product-description-field">Description<textarea disabled={busy || uploading} required minLength={20} maxLength={3000} rows={6} aria-invalid={!!errors.description} aria-describedby={errors.description ? "product-description-error" : undefined} value={value.description} onChange={(event) => setValue({ ...value, description: event.target.value })}/></label><FieldError id="product-description-error" errors={errors.description}/>
         <label className="product-description-field">Description en arabe<textarea dir="rtl" disabled={busy || uploading} minLength={20} maxLength={3000} rows={6} aria-invalid={!!errors.descriptionAr} aria-describedby={errors.descriptionAr ? "product-description-ar-error" : undefined} value={value.descriptionAr} onChange={(event) => setValue({ ...value, descriptionAr: event.target.value })}/></label><FieldError id="product-description-ar-error" errors={errors.descriptionAr}/>
       </div>

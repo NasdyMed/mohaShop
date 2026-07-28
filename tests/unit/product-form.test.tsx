@@ -20,6 +20,7 @@ const validDraft = {
   description: "Une description suffisamment longue pour le formulaire.",
   descriptionAr: "",
   priceDh: 850,
+  compareAtPriceDh: null,
   slug: "botte-atlas",
   isVisible: false,
   images: [{ url: "https://example.com/atlas.webp", alt: "Botte Atlas noire", color: "Noir", position: 0 }],
@@ -30,6 +31,26 @@ beforeEach(() => vi.clearAllMocks());
 afterEach(cleanup);
 
 describe("ProductForm", () => {
+  it("edits and submits an optional price before promotion", async () => {
+    mocks.save.mockResolvedValue({ ok: false, code: "INVALID", message: "stop", fieldErrors: {} });
+    const user = userEvent.setup();
+    render(<ProductForm initialValue={validDraft} />);
+
+    expect(screen.getByRole("spinbutton", { name: "Prix de vente (DH)" })).toHaveValue(850);
+    const compareInput = screen.getByRole("spinbutton", { name: "Prix avant promotion (DH)" });
+    expect(compareInput).toHaveValue(null);
+
+    await user.type(compareInput, "1090");
+    expect(screen.getByText(/22 %/)).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Enregistrer le produit" }));
+
+    await waitFor(() => expect(mocks.save).toHaveBeenCalled());
+    expect(mocks.save.mock.calls[0][0]).toMatchObject({
+      priceDh: 850,
+      compareAtPriceDh: 1090,
+    });
+  });
+
   it("canonicalizes legacy image colors for grouping, capacity and payload", async () => {
     mocks.save.mockResolvedValue({ ok: false, code: "INVALID", message: "stop", fieldErrors: {} });
     const legacy = Array.from({ length: 6 }, (_, position) => ({
@@ -245,7 +266,7 @@ describe("ProductForm", () => {
 
 describe("ProductForm failures and accessibility",()=>{
  it("déverrouille et permet une nouvelle sauvegarde après une exception",async()=>{mocks.save.mockRejectedValueOnce(new Error("network")).mockResolvedValueOnce({ok:false,code:"UNKNOWN",message:"Réessayez.",fieldErrors:{}});render(<ProductForm initialValue={validDraft}/>);const button=screen.getByRole("button",{name:"Enregistrer le produit"});fireEvent.submit(button.closest("form")!);expect(await screen.findByRole("alert")).toHaveTextContent(/incertain/i);expect(button).not.toBeDisabled();fireEvent.submit(button.closest("form")!);await waitFor(()=>expect(mocks.save).toHaveBeenCalledTimes(2))});
- it("associe les erreurs aux champs produit, image et déclinaison",async()=>{mocks.save.mockResolvedValue({ok:false,code:"INVALID",message:"Erreur.",fieldErrors:{name:["Nom invalide"],priceDh:["Prix invalide"],"images.0.alt":["Alt invalide"],"variants.0.stock":["Stock invalide"]}});render(<ProductForm initialValue={validDraft}/>);fireEvent.submit(screen.getByRole("button",{name:"Enregistrer le produit"}).closest("form")!);await screen.findByText("Nom invalide");expect(screen.getByRole("textbox",{name:"Nom"})).toHaveAttribute("aria-describedby","product-name-error");expect(screen.getByRole("spinbutton",{name:"Prix (DH)"})).toHaveAttribute("aria-invalid","true");expect(screen.getByRole("textbox",{name:"Texte alternatif"})).toHaveAttribute("aria-describedby","product-image-0-alt-error");expect(screen.getByRole("spinbutton",{name:/Stock Noir, pointure/})).toHaveAttribute("aria-describedby","variant-0-stock-error")});
+it("associe les erreurs aux champs produit, image et déclinaison",async()=>{mocks.save.mockResolvedValue({ok:false,code:"INVALID",message:"Erreur.",fieldErrors:{name:["Nom invalide"],priceDh:["Prix invalide"],"images.0.alt":["Alt invalide"],"variants.0.stock":["Stock invalide"]}});render(<ProductForm initialValue={validDraft}/>);fireEvent.submit(screen.getByRole("button",{name:"Enregistrer le produit"}).closest("form")!);await screen.findByText("Nom invalide");expect(screen.getByRole("textbox",{name:"Nom"})).toHaveAttribute("aria-describedby","product-name-error");expect(screen.getByRole("spinbutton",{name:"Prix de vente (DH)"})).toHaveAttribute("aria-invalid","true");expect(screen.getByRole("textbox",{name:"Texte alternatif"})).toHaveAttribute("aria-describedby","product-image-0-alt-error");expect(screen.getByRole("spinbutton",{name:/Stock Noir, pointure/})).toHaveAttribute("aria-describedby","variant-0-stock-error")});
 });
 
 describe("VariantEditor through ProductForm", () => {

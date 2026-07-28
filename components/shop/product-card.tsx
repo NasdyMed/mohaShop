@@ -5,10 +5,11 @@ import Link from "next/link";
 import { useState } from "react";
 
 import type { CatalogProductCard } from "@/lib/catalog/queries";
-import { formatPriceDh } from "@/lib/catalog/price";
+import { getProductPromotion } from "@/lib/catalog/promotion";
 import { localizePath } from "@/lib/i18n/config";
 import { localizeProduct } from "@/lib/i18n/product";
 import { QuickVariantSelector } from "./quick-variant-selector";
+import { ProductPrice } from "./product-price";
 import { useStorefrontI18n } from "./locale-provider";
 
 export function ProductCard({ product }: { product: CatalogProductCard }) {
@@ -19,6 +20,7 @@ export function ProductCard({ product }: { product: CatalogProductCard }) {
   const currentImage = product.images.find((image) => image.color === selectedColor)
     ?? product.images.find((image) => image.color === null)
     ?? product.image;
+  const promotion = getProductPromotion(product.priceDh, product.compareAtPriceDh);
 
   return (
     <article className="product-card">
@@ -27,6 +29,7 @@ export function ProductCard({ product }: { product: CatalogProductCard }) {
           <span className={`product-card-stock ${product.available ? "is-available" : "is-unavailable"}`}>
             {product.available ? dictionary.stock.available : dictionary.stock.outOfStock}
           </span>
+          {promotion ? <span className="product-card-promo">PROMO −{promotion.discountPercent} %</span> : null}
           {currentImage ? (
             <Image key={currentImage.id} src={currentImage.url} alt={currentImage.alt} fill sizes="(max-width: 760px) 100vw, (max-width: 1099px) 50vw, 25vw" />
           ) : (
@@ -44,7 +47,7 @@ export function ProductCard({ product }: { product: CatalogProductCard }) {
         />
         <Link className="product-card-name" href={localizePath(`/produits/${product.slug}`, locale)}><h2>{localizedProduct.name}</h2></Link>
         <p className="product-card-category">{dictionary.product.category}</p>
-        <strong className="product-card-price">{formatPriceDh(product.priceDh)}</strong>
+        <ProductPrice priceDh={product.priceDh} compareAtPriceDh={product.compareAtPriceDh} variant="card" />
       </div>
     </article>
   );

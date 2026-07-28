@@ -40,11 +40,22 @@ export const productInputSchema = z.object({
     .pipe(z.string().min(20, "La description est trop courte.").max(3000, "La description est trop longue.").refine(noControls, "La description contient des caractères interdits.")),
   descriptionAr: optionalClean(20, 3000, "La description en arabe"),
   priceDh: z.number().safe().int().min(1).max(1_000_000),
+  compareAtPriceDh: z.preprocess(
+    (value) => value == null || value === "" ? null : value,
+    z.number().safe().int().min(1).max(1_000_000).nullable(),
+  ).default(null),
   slug: z.string().trim().max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug invalide."),
   isVisible: z.boolean(),
   images: z.array(imageSchema).max(productColorOptions.length * MAX_IMAGES_PER_COLOR),
   variants: z.array(variantSchema).max(100),
 }).strict().superRefine((value, context) => {
+  if (value.compareAtPriceDh != null && value.compareAtPriceDh <= value.priceDh) {
+    context.addIssue({
+      code: "custom",
+      path: ["compareAtPriceDh"],
+      message: "Le prix avant promotion doit être supérieur au prix de vente.",
+    });
+  }
   if (value.isVisible && value.images.length === 0) context.addIssue({ code: "custom", path: ["images"], message: "Ajoutez au moins une image avant de publier." });
   if (value.isVisible && value.variants.length === 0) context.addIssue({ code: "custom", path: ["variants"], message: "Ajoutez au moins une déclinaison avant de publier." });
   const positions = new Set<number>();

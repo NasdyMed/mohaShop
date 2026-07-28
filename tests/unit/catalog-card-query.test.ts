@@ -19,6 +19,7 @@ describe("listVisibleProducts", () => {
         slug: "atlas",
         name: "Atlas",
         priceDh: 899,
+        compareAtPriceDh: 1199,
         images: [
           { id: "image-1", url: "https://example.com/atlas.webp", alt: "Atlas", color: "Cognac" },
           { id: "image-2", url: "https://example.com/atlas-noir.webp", alt: "Atlas noir", color: "Noir" },
@@ -34,6 +35,7 @@ describe("listVisibleProducts", () => {
 
     expect(mocks.findMany).toHaveBeenCalledWith(expect.objectContaining({
       select: expect.objectContaining({
+        compareAtPriceDh: true,
         variants: {
           orderBy: [{ color: "asc" }, { size: "asc" }],
           select: { id: true, sku: true, color: true, size: true, stock: true },
@@ -43,6 +45,7 @@ describe("listVisibleProducts", () => {
     expect(result[0].variants).toHaveLength(2);
     expect(result[0].images).toHaveLength(2);
     expect(result[0].available).toBe(true);
+    expect(result[0].compareAtPriceDh).toBe(1199);
   });
 
   it("marks a product unavailable when every variant is sold out", async () => {

@@ -13,6 +13,7 @@ const product = {
   name: "Bottine Atlas",
   description: "Une bottine confortable.",
   priceDh: 1290,
+  compareAtPriceDh: 1590,
   image: { id: "cognac", url: "/cognac.jpg", alt: "Atlas cognac", color: "Cognac" },
   images: [
     { id: "cognac", url: "/cognac.jpg", alt: "Atlas cognac", color: "Cognac" },
@@ -34,6 +35,8 @@ describe("ProductDetailExperience", () => {
     expect(screen.getByText("EU 40")).toBeInTheDocument();
     expect(screen.getByText("EU 41")).toBeInTheDocument();
     expect(container.querySelector(".size-option-grid")).toBeInTheDocument();
+    expect(screen.getByText("1.590 DH").tagName).toBe("DEL");
+    expect(screen.getByText("Économisez 300 DH")).toBeVisible();
     expect(screen.queryByText("Botte signature")).toBeNull();
     expect(screen.queryByText("Collection · Maison Botte")).toBeNull();
   });

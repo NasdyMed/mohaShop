@@ -12,6 +12,7 @@ export type CatalogProductCard = {
   description: string;
   descriptionAr: string | null;
   priceDh: number;
+  compareAtPriceDh: number | null;
   image: CatalogImage | null;
   images: CatalogImage[];
   variants: CatalogVariant[];
@@ -34,6 +35,7 @@ export async function listVisibleProducts(): Promise<CatalogProductCard[]> {
       description: true,
       descriptionAr: true,
       priceDh: true,
+      compareAtPriceDh: true,
       images: { orderBy: { position: "asc" }, select: { id: true, url: true, alt: true, color: true } },
       variants: {
         orderBy: [{ color: "asc" }, { size: "asc" }],
@@ -65,6 +67,7 @@ export async function getVisibleProduct(slug: string): Promise<CatalogProductDet
       description: true,
       descriptionAr: true,
       priceDh: true,
+      compareAtPriceDh: true,
       images: { orderBy: { position: "asc" }, select: { id: true, url: true, alt: true, color: true } },
       variants: {
         orderBy: [{ color: "asc" }, { size: "asc" }],

@@ -22,6 +22,7 @@ model Product {
   description   String
   descriptionAr String?
   priceDh       Int
+  compareAtPriceDh Int?
   isVisible     Boolean          @default(false)
   images        ProductImage[]
   variants      ProductVariant[]

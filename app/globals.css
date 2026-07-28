@@ -453,6 +453,41 @@ html { scroll-behavior: smooth; }
   font-size: .98rem;
   font-weight: 700;
 }
+.product-card-promo {
+  position: absolute;
+  inset: 14px 14px auto auto;
+  z-index: 2;
+  padding: 7px 10px;
+  background: var(--store-secondary);
+  color: #fff;
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+}
+.product-price-values {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.product-price-values strong {
+  color: var(--store-secondary);
+  font-size: inherit;
+}
+.product-price-values del {
+  color: #777;
+  font-size: .84em;
+  font-weight: 500;
+}
+.product-price-savings {
+  margin: 6px 0 0;
+  color: var(--store-secondary);
+  font-size: .76rem;
+  font-weight: 700;
+}
+.product-price-detail {
+  font-size: 1.22rem;
+}
 
 .product-detail {
   grid-template-columns: minmax(0, 1.55fr) minmax(360px, .9fr);
