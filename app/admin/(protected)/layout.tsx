@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { BrandLogo } from "@/components/brand-logo";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { LogoutButton } from "./logout-button";
 
@@ -11,7 +12,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="admin-shell">
       <header className="admin-header">
-        <Link className="brand" href="/admin">Maison Botte</Link>
+        <Link className="brand" href="/admin"><BrandLogo /></Link>
         <nav aria-label="Administration">
           <Link href="/admin/produits">Produits</Link>
           <Link href="/admin/hero">Hero</Link>

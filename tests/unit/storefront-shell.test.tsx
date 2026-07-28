@@ -15,6 +15,9 @@ describe("StorefrontShell", () => {
     expect(shell).toHaveAttribute("lang", "ar");
     expect(shell).toHaveAttribute("dir", "rtl");
     expect(screen.getByRole("navigation", { name: "التنقل الرئيسي" })).toBeVisible();
-    expect(screen.getByRole("link", { name: "Maison Botte" })).toHaveAttribute("href", "/ar");
+    const brand = screen.getByRole("link", { name: "Maelo" });
+    expect(brand).toHaveAttribute("href", "/ar");
+    expect(screen.getByRole("img", { name: "Maelo" })).toHaveAttribute("src", expect.stringContaining("maelo-logo.png"));
+    expect(screen.queryByText("Maison Botte")).not.toBeInTheDocument();
   });
 });
