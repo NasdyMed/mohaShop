@@ -16,6 +16,17 @@ const VIDEO_TYPES = new Set(["video/mp4", "video/webm"]);
 type EditableVideo = AdminHeroVideoItem;
 type Feedback = { kind: "error" | "success"; text: string } | null;
 
+function uploadErrorMessage(fileName: string, error: unknown) {
+  if (!(error instanceof Error) || !error.message.trim()) {
+    return `Le téléversement de ${fileName} a échoué.`;
+  }
+  const safeDetail = error.message
+    .replace(/vercel_blob_rw_[^\s"']+/gi, "[token masqué]")
+    .replace(/bearer\s+[^\s"']+/gi, "Bearer [token masqué]")
+    .slice(0, 500);
+  return `Le téléversement de ${fileName} a échoué : ${safeDetail}`;
+}
+
 function ArrowIcon({ direction }: { direction: "up" | "down" }) {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -142,9 +153,10 @@ export function HeroVideoManager({ initialVideos }: { initialVideos: AdminHeroVi
             handleUploadUrl: "/api/admin/hero-videos/upload",
             onUploadProgress: ({ percentage }) => setProgress(Math.round(percentage)),
           });
-        } catch {
+        } catch (error) {
           failed += 1;
-          lastError = `Le téléversement de ${file.name} a échoué.`;
+          console.error("hero_video_upload_failed", { fileName: file.name, error });
+          lastError = uploadErrorMessage(file.name, error);
           setFeedback({ kind: "error", text: lastError });
           continue;
         }

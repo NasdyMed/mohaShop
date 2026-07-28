@@ -189,9 +189,9 @@ describe("HeroVideoManager", () => {
     Object.defineProperty(huge, "size", { value: 50 * 1024 * 1024 + 1 });
     fireEvent.change(input, { target: { files: [huge] } });
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/50 mio/i));
-    mocks.upload.mockRejectedValueOnce(new Error("network"));
+    mocks.upload.mockRejectedValueOnce(new Error("Missing BLOB_READ_WRITE_TOKEN"));
     fireEvent.change(input, { target: { files: [new File(["ok"], "network.mp4", { type: "video/mp4" })] } });
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/téléversement/i));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/missing blob_read_write_token/i));
     mocks.upload.mockResolvedValueOnce({ url: "https://blob.test/db.mp4" });
     mocks.create.mockResolvedValueOnce({ ok: false, message: "La création a échoué.", fieldErrors: {} });
     fireEvent.change(input, { target: { files: [new File(["ok"], "db.mp4", { type: "video/mp4" })] } });
