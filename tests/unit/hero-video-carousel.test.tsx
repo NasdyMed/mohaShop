@@ -70,6 +70,11 @@ describe("HeroVideoCarousel", () => {
     expect(screen.getByText("02")).toHaveClass("hero-index");
   });
 
+  it("loops a single video continuously", async () => {
+    render(<HeroVideoCarousel videos={[videos[0]]} fallback={<div>fallback</div>} />);
+    expect(await screen.findByLabelText("Première")).toHaveAttribute("loop");
+  });
+
   it("selects a video from its accessible indicator", async () => {
     render(<HeroVideoCarousel videos={videos} fallback={<div>fallback</div>} />);
     const button = screen.getByRole("button", { name: "Afficher la vidéo 2 sur 3" });

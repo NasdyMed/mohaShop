@@ -105,6 +105,7 @@ export function HeroVideoCarousel({ videos, fallback }: { videos: HeroVideoItem[
           data-active={active ? "true" : undefined}
           muted
           playsInline
+          loop={videos.length === 1}
           preload={active ? "auto" : "metadata"}
           inert={!active}
           onEnded={() => {
