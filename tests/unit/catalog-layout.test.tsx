@@ -61,8 +61,14 @@ describe("catalog layout", () => {
     expect(screen.queryByRole("button", { name: "Choisir une taille" })).toBeNull();
     expect(screen.queryByText("Voir le modèle")).toBeNull();
     expect(document.querySelector(".product-card-index")).toBeNull();
-    expect(screen.getByText("PROMO −19 %")).toBeVisible();
+    expect(screen.getByText("−19 %")).toBeVisible();
     expect(screen.getByText("1.590 DH").tagName).toBe("DEL");
+    const card = screen.getByRole("heading", { name: "Bottine Atlas" }).closest(".product-card")!;
+    const media = card.querySelector(".product-card-media")!;
+    const copy = card.querySelector(".product-card-copy")!;
+    expect(media.querySelector(".product-card-promo")).toBeInTheDocument();
+    expect(media.querySelector(".product-card-stock")).toBeNull();
+    expect(copy.querySelector(".product-card-stock")).toHaveTextContent("En stock");
   });
 
   it("changes the card image when another available color is selected", async () => {
@@ -81,6 +87,10 @@ describe("catalog layout", () => {
     expect(css).toMatch(/@media\s*\(max-width:\s*760px\)[\s\S]*?\.product-grid\s*\{[^}]*grid-template-columns:\s*1fr/s);
     expect(css).toContain(".product-card-price");
     expect(css).toContain(".product-availability");
+    expect(css).toMatch(/\.product-card-promo\s*\{[^}]*inset-inline-start:\s*12px/s);
+    expect(css).toMatch(/\.product-card-stock\s*\{[^}]*position:\s*static/s);
+    expect(css).toMatch(/\.product-card-stock\s*\{[^}]*display:\s*inline-flex/s);
+    expect(css).toMatch(/@media\s*\(max-width:\s*360px\)[\s\S]*?\.product-card-promo/s);
     expect(css).toContain("#collection:target .product-card");
     expect(css).toContain("@keyframes collection-reveal");
   });

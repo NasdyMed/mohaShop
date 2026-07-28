@@ -26,10 +26,7 @@ export function ProductCard({ product }: { product: CatalogProductCard }) {
     <article className="product-card">
       <Link className="product-card-media-link" href={localizePath(`/produits/${product.slug}`, locale)} aria-label={`${locale === "fr" ? "Découvrir" : "اكتشف"} ${localizedProduct.name}`}>
         <div className="product-card-media">
-          <span className={`product-card-stock ${product.available ? "is-available" : "is-unavailable"}`}>
-            {product.available ? dictionary.stock.available : dictionary.stock.outOfStock}
-          </span>
-          {promotion ? <span className="product-card-promo">PROMO −{promotion.discountPercent} %</span> : null}
+          {promotion ? <span className="product-card-promo">−{promotion.discountPercent} %</span> : null}
           {currentImage ? (
             <Image key={currentImage.id} src={currentImage.url} alt={currentImage.alt} fill sizes="(max-width: 760px) 100vw, (max-width: 1099px) 50vw, 25vw" />
           ) : (
@@ -40,6 +37,9 @@ export function ProductCard({ product }: { product: CatalogProductCard }) {
         </div>
       </Link>
       <div className="product-card-copy">
+        <span className={`product-card-stock ${product.available ? "is-available" : "is-unavailable"}`}>
+          {product.available ? dictionary.stock.available : dictionary.stock.outOfStock}
+        </span>
         <QuickVariantSelector
           productSlug={product.slug}
           variants={product.variants}
