@@ -36,10 +36,8 @@ async function fillValidForm() {
   const user = userEvent.setup();
   await user.type(screen.getByLabelText("Prénom"), "Amine");
   await user.type(screen.getByLabelText("Nom"), "El Idrissi");
-  await user.type(screen.getByLabelText("Téléphone"), "0612345678");
   await user.type(screen.getByLabelText("Adresse de livraison"), "12 rue des Fleurs, Rabat");
   await user.type(screen.getByLabelText("Ville"), "Rabat");
-  await user.type(screen.getByLabelText("Région"), "Rabat-Salé-Kénitra");
   return user;
 }
 
@@ -51,6 +49,19 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe("CheckoutForm", () => {
+  it("affiche exactement prénom, nom, ville et adresse", async () => {
+    renderCheckout();
+    const form = (await screen.findByRole("button", { name: "Confirmer ma commande" })).closest("form")!;
+    const fields = within(form).getAllByRole("textbox");
+
+    expect(fields.map((field) => field.getAttribute("name"))).toEqual([
+      "firstName",
+      "lastName",
+      "address",
+      "city",
+    ]);
+  });
+
   it("affiche le parcours de livraison en arabe et conserve la route arabe", async () => {
     renderCheckout([cartItem], "ar");
     expect(await screen.findByRole("heading", { name: "معلومات التوصيل" })).toBeVisible();
@@ -82,10 +93,8 @@ describe("CheckoutForm", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Veuillez corriger les champs indiqués");
     expect(screen.getByText("Le prénom doit contenir au moins 2 caractères.")).toBeInTheDocument();
     expect(screen.getByText("Le nom doit contenir au moins 2 caractères.")).toBeInTheDocument();
-    expect(screen.getByText("Le numéro de téléphone marocain est invalide.")).toBeInTheDocument();
     expect(screen.getByText("L’adresse doit contenir au moins 10 caractères.")).toBeInTheDocument();
     expect(screen.getByText("La ville doit contenir au moins 2 caractères.")).toBeInTheDocument();
-    expect(screen.getByText("La région doit contenir au moins 2 caractères.")).toBeInTheDocument();
     expect(createOrderAction).not.toHaveBeenCalled();
   });
 
@@ -98,15 +107,8 @@ describe("CheckoutForm", () => {
     await waitFor(() => expect(createOrderAction).toHaveBeenCalledWith({
       firstName: "Amine",
       lastName: "El Idrissi",
-      phone: "0612345678",
-      email: "",
       address: "12 rue des Fleurs, Rabat",
-      addressComplement: "",
       city: "Rabat",
-      region: "Rabat-Salé-Kénitra",
-      postalCode: "",
-      country: "Maroc",
-      deliveryNotes: "",
       items: [{ variantId: "variant-atlas-40", quantity: 2 }],
     }));
     expect(createOrderAction.mock.calls[0][0]).not.toHaveProperty("totalDh");
@@ -126,7 +128,6 @@ describe("CheckoutForm", () => {
     expect(await screen.findByText(message)).toBeInTheDocument();
     expect(screen.getByLabelText("Prénom")).toHaveValue("Amine");
     expect(screen.getByLabelText("Nom")).toHaveValue("El Idrissi");
-    expect(screen.getByLabelText("Téléphone")).toHaveValue("0612345678");
     expect(screen.getByLabelText("Adresse de livraison")).toHaveValue("12 rue des Fleurs, Rabat");
     expect(JSON.parse(localStorage.getItem("boots-cart-v1") ?? "[]")).toHaveLength(1);
     expect(push).not.toHaveBeenCalled();

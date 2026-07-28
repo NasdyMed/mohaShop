@@ -67,6 +67,18 @@ describe("CartProvider storage", () => {
     expect(screen.getByText("1", { selector: ".floating-cart-count" })).toBeInTheDocument();
   });
 
+  it("shows a separate floating WhatsApp contact shortcut", async () => {
+    render(<CartProvider><Probe /></CartProvider>);
+    await waitFor(() => expect(screen.getByText("0:vide")).toBeInTheDocument());
+
+    const whatsapp = screen.getByRole("link", { name: "Discuter avec nous sur WhatsApp" });
+    expect(whatsapp).toHaveAttribute("href", "https://wa.me/212645194705");
+    expect(whatsapp).toHaveAttribute("target", "_blank");
+    expect(whatsapp).toHaveAttribute("rel", "noopener noreferrer");
+    expect(whatsapp).toHaveClass("floating-whatsapp");
+    expect(whatsapp).not.toHaveClass("floating-cart");
+  });
+
   it("does not show an addition notification while hydrating a stored cart", async () => {
     localStorage.setItem("boots-cart-v1", JSON.stringify([{
       variantId: "v1", productSlug: "atlas", productName: "Atlas", imageUrl: null,

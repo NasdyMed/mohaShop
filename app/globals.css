@@ -382,6 +382,10 @@ html { scroll-behavior: smooth; }
 .floating-cart svg { width: 27px; height: 27px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .floating-cart-count { min-width: 23px; height: 23px; position: absolute; top: -6px; right: -4px; display: grid; place-items: center; padding: 0 5px; color: var(--store-text); border: 2px solid var(--store-text); border-radius: 999px; background: var(--store-primary); font-size: .68rem; font-weight: 900; }
 .floating-cart.is-adding { animation: floating-cart-pop .48s cubic-bezier(.22,1,.36,1); }
+.floating-whatsapp { width: 62px; height: 62px; position: fixed; z-index: 45; right: 24px; bottom: 98px; display: grid; place-items: center; color: #fff; border: 2px solid #fff; border-radius: 50%; background: #25d366; box-shadow: 0 14px 34px rgba(17, 94, 51, .28); transition: transform .2s ease, background .2s ease, box-shadow .2s ease; }
+.floating-whatsapp:hover { color: #fff; background: #128c4a; box-shadow: 0 17px 38px rgba(17, 94, 51, .34); transform: translateY(-3px); }
+.floating-whatsapp:focus-visible { outline: 3px solid var(--store-text); outline-offset: 3px; }
+.floating-whatsapp svg { width: 31px; height: 31px; fill: currentColor; }
 
 /* Reference-led commerce surfaces */
 .product-card {
@@ -754,6 +758,7 @@ html { scroll-behavior: smooth; }
   .cart-toast { top: 12px; right: 12px; width: calc(100vw - 24px); }
   .admin-save-toast { top: 12px; right: 12px; width: calc(100vw - 24px); }
   .floating-cart { right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); }
+  .floating-whatsapp { right: 16px; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 74px); }
 }
 
 /* Impeccable admin hero video manager */

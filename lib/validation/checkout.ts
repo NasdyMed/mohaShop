@@ -43,13 +43,6 @@ const normalizedText = (minimum: number, maximum: number, field: string) =>
     );
 
 const frenchStrictError = { error: "Champ non reconnu." } as const;
-const optionalText = (maximum: number, field: string) =>
-  z.string()
-    .refine((value) => !/[\u0000-\u001f\u007f-\u009f]/u.test(value), `${field} contient des caractères non autorisés.`)
-    .transform((value) => value.trim().replace(/[ \t\r\n\u00a0]+/gu, " "))
-    .refine((value) => value.length <= maximum, `${field} ne peut pas dépasser ${maximum} caractères.`)
-    .transform((value) => value || undefined);
-
 const checkoutItemSchema = z.strictObject({
   variantId: z
     .string({ error: "La référence de l’article est requise." })
@@ -68,25 +61,9 @@ export const checkoutSchema = z
   .strictObject({
     firstName: normalizedText(2, 80, "Le prénom"),
     lastName: normalizedText(2, 80, "Le nom"),
-    phone: z
-      .string({ error: "Le téléphone est requis." })
-      .transform(normalizeMoroccanPhone)
-      .pipe(z.string().regex(MOROCCAN_MOBILE, "Le numéro de téléphone marocain est invalide.")),
-    email: z.string().trim().max(254, "L’e-mail est trop long.").refine(
-      (value) => value === "" || z.email().safeParse(value).success,
-      "L’adresse e-mail est invalide.",
-    ).transform((value) => value.toLowerCase() || undefined),
     address: normalizedText(10, 300, "L’adresse"),
-    addressComplement: optionalText(160, "Le complément d’adresse"),
     city: normalizedText(2, 100, "La ville"),
-    region: normalizedText(2, 100, "La région"),
-    postalCode: z.string().trim().refine(
-      (value) => value === "" || /^\d{5}$/.test(value),
-      "Le code postal doit contenir 5 chiffres.",
-    ).transform((value) => value || undefined),
-    country: z.literal("Maroc", { error: "Le pays doit être le Maroc." }),
     locale: z.enum(["fr", "ar"]).optional(),
-    deliveryNotes: optionalText(500, "Les instructions de livraison"),
     items: z
       .array(checkoutItemSchema, { error: "Le panier doit contenir des articles." })
       .min(1, "Le panier doit contenir au moins un article.")

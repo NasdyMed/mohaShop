@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { ZodError } from "zod";
 
 import { createOrder, OrderCreationError } from "@/lib/orders/create-order";
-import { getCheckoutRateLimiter, normalizeCheckoutPhone, normalizeForwardedIp } from "@/lib/security/checkout-rate-limit";
+import { getCheckoutRateLimiter, normalizeForwardedIp } from "@/lib/security/checkout-rate-limit";
 
 type CreateOrderActionResult =
   | { ok: true; number: string }
@@ -16,8 +16,7 @@ export async function createOrderAction(rawInput: unknown): Promise<CreateOrderA
   let forwardedFor: string | null = null;
   try { forwardedFor = (await headers()).get("x-forwarded-for"); }
   catch { console.error("checkout_rate_limit_failed", { cause: "HEADERS_UNAVAILABLE" }); }
-  const rawPhone = rawInput && typeof rawInput === "object" && "phone" in rawInput ? (rawInput as { phone?: unknown }).phone : undefined;
-  const allowed = await getCheckoutRateLimiter().allow({ ip: normalizeForwardedIp(forwardedFor), phone: normalizeCheckoutPhone(rawPhone) });
+  const allowed = await getCheckoutRateLimiter().allow({ ip: normalizeForwardedIp(forwardedFor) });
   if (!allowed) return { ok: false, code: "RATE_LIMITED", message: "Trop de commandes ont été tentées. Veuillez réessayer dans quelques minutes." };
 
   let result;

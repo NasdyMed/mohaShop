@@ -13,15 +13,12 @@ import { localizePath } from "@/lib/i18n/config";
 import { useStorefrontI18n } from "@/components/shop/locale-provider";
 
 type CustomerFields = {
-  firstName: string; lastName: string; phone: string; email: string; address: string;
-  addressComplement: string; city: string; region: string; postalCode: string;
-  country: "Maroc"; deliveryNotes: string;
+  firstName: string; lastName: string; address: string; city: string;
 };
 type FieldName = keyof CustomerFields;
 
 const initialFields: CustomerFields = {
-  firstName: "", lastName: "", phone: "", email: "", address: "", addressComplement: "",
-  city: "", region: "", postalCode: "", country: "Maroc", deliveryNotes: "",
+  firstName: "", lastName: "", address: "", city: "",
 };
 
 const failureMessages = {
@@ -43,16 +40,14 @@ export function CheckoutForm() {
   const ar = locale === "ar";
   const labels = ar ? {
     heading: "معلومات التوصيل", eyebrow: "إتمام طلبك", intro: "سنستخدم هذه المعلومات فقط لتحضير طلبك وتوصيله.",
-    contact: "معلوماتك", firstName: "الاسم الأول", lastName: "النسب", phone: "الهاتف", email: "البريد الإلكتروني",
-    addressGroup: "عنوان التوصيل", address: "عنوان التوصيل", complement: "الشقة أو الطابق أو علامة مميزة", city: "المدينة",
-    region: "الجهة", postalCode: "الرمز البريدي", country: "البلد", notes: "تعليمات التوصيل", optional: "اختياري",
+    contact: "معلومات التوصيل", firstName: "الاسم الأول", lastName: "النسب",
+    address: "عنوان التوصيل", city: "المدينة",
     pending: "جارٍ تسجيل الطلب…", submit: dictionary.checkout.submit, invalid: "يرجى تصحيح الحقول المشار إليها.",
     empty: dictionary.cart.empty, viewCollection: "عرض المجموعة", backCart: "العودة إلى السلة",
   } : {
     heading: "Livraison", eyebrow: "Finaliser votre achat", intro: "Nous les utiliserons uniquement pour préparer et livrer cette commande.",
-    contact: "Vos coordonnées", firstName: "Prénom", lastName: "Nom", phone: "Téléphone", email: "E-mail",
-    addressGroup: "Adresse de livraison", address: "Adresse de livraison", complement: "Appartement, étage ou repère", city: "Ville",
-    region: "Région", postalCode: "Code postal", country: "Pays", notes: "Instructions de livraison", optional: "Facultatif",
+    contact: "Informations de livraison", firstName: "Prénom", lastName: "Nom",
+    address: "Adresse de livraison", city: "Ville",
     pending: "Commande en cours…", submit: "Confirmer ma commande", invalid: "Veuillez corriger les champs indiqués.",
     empty: "Votre panier est vide.", viewCollection: "Voir la collection", backCart: "Retour au panier",
   };
@@ -90,10 +85,7 @@ export function CheckoutForm() {
       const flattened = parsed.error.flatten().fieldErrors;
       setFieldErrors({
         firstName: flattened.firstName?.[0], lastName: flattened.lastName?.[0],
-        phone: flattened.phone?.[0], email: flattened.email?.[0], address: flattened.address?.[0],
-        addressComplement: flattened.addressComplement?.[0], city: flattened.city?.[0],
-        region: flattened.region?.[0], postalCode: flattened.postalCode?.[0],
-        country: flattened.country?.[0], deliveryNotes: flattened.deliveryNotes?.[0],
+        address: flattened.address?.[0], city: flattened.city?.[0],
       });
       setFormError(labels.invalid);
       submitLocked.current = false;
@@ -107,11 +99,7 @@ export function CheckoutForm() {
         if (result.code === "INVALID" && result.fieldErrors) {
           setFieldErrors({
             firstName: result.fieldErrors.firstName?.[0], lastName: result.fieldErrors.lastName?.[0],
-            phone: result.fieldErrors.phone?.[0], email: result.fieldErrors.email?.[0],
-            address: result.fieldErrors.address?.[0], addressComplement: result.fieldErrors.addressComplement?.[0],
-            city: result.fieldErrors.city?.[0], region: result.fieldErrors.region?.[0],
-            postalCode: result.fieldErrors.postalCode?.[0], country: result.fieldErrors.country?.[0],
-            deliveryNotes: result.fieldErrors.deliveryNotes?.[0],
+            address: result.fieldErrors.address?.[0], city: result.fieldErrors.city?.[0],
           });
         }
         setFormError(localizedFailureMessages[result.code]);
@@ -147,17 +135,8 @@ export function CheckoutForm() {
         <fieldset className="checkout-fieldset"><legend>{labels.contact}</legend><div className="checkout-fields">
           <CheckoutField label={labels.firstName} name="firstName" autoComplete="given-name" value={fields.firstName} error={displayFieldError(fieldErrors.firstName)} onChange={field} />
           <CheckoutField label={labels.lastName} name="lastName" autoComplete="family-name" value={fields.lastName} error={displayFieldError(fieldErrors.lastName)} onChange={field} />
-          <CheckoutField label={labels.phone} name="phone" autoComplete="tel" inputMode="tel" value={fields.phone} error={displayFieldError(fieldErrors.phone)} onChange={field} />
-          <CheckoutField label={labels.email} name="email" autoComplete="email" inputMode="email" value={fields.email} error={displayFieldError(fieldErrors.email)} onChange={field} optional optionalLabel={labels.optional} />
-        </div></fieldset>
-        <fieldset className="checkout-fieldset"><legend>{labels.addressGroup}</legend><div className="checkout-fields">
           <CheckoutField label={labels.address} name="address" autoComplete="street-address" value={fields.address} error={displayFieldError(fieldErrors.address)} onChange={field} multiline />
-          <CheckoutField label={labels.complement} name="addressComplement" autoComplete="address-line2" value={fields.addressComplement} error={displayFieldError(fieldErrors.addressComplement)} onChange={field} optional optionalLabel={labels.optional} />
           <CheckoutField label={labels.city} name="city" autoComplete="address-level2" value={fields.city} error={displayFieldError(fieldErrors.city)} onChange={field} />
-          <CheckoutField label={labels.region} name="region" autoComplete="address-level1" value={fields.region} error={displayFieldError(fieldErrors.region)} onChange={field} />
-          <CheckoutField label={labels.postalCode} name="postalCode" autoComplete="postal-code" inputMode="numeric" value={fields.postalCode} error={displayFieldError(fieldErrors.postalCode)} onChange={field} optional optionalLabel={labels.optional} />
-          <CheckoutField label={labels.country} name="country" autoComplete="country-name" value={fields.country} error={displayFieldError(fieldErrors.country)} onChange={field} readOnly />
-          <CheckoutField label={labels.notes} name="deliveryNotes" autoComplete="off" value={fields.deliveryNotes} error={displayFieldError(fieldErrors.deliveryNotes)} onChange={field} multiline optional optionalLabel={labels.optional} />
         </div></fieldset>
         <button className="checkout-submit" type="submit" disabled={pending}>{pending ? <LoadingLabel>{labels.pending}</LoadingLabel> : labels.submit}</button>
         <p className="submit-note">{dictionary.checkout.paymentNote}</p>
@@ -172,13 +151,12 @@ export function CheckoutForm() {
   </div>;
 }
 
-function CheckoutField({ label, name, autoComplete, value, error, onChange, inputMode, multiline = false, optional = false, optionalLabel = "Facultatif", readOnly = false }: {
+function CheckoutField({ label, name, autoComplete, value, error, onChange, multiline = false }: {
   label: string; name: FieldName; autoComplete: string; value: string; error?: string;
-  onChange: (name: FieldName, value: string) => void; inputMode?: "tel" | "email" | "numeric";
-  multiline?: boolean; optional?: boolean; optionalLabel?: string; readOnly?: boolean;
+  onChange: (name: FieldName, value: string) => void;
+  multiline?: boolean;
 }) {
   const errorId = `${name}-error`;
-  const common = { id: name, name, autoComplete, value, required: !optional, readOnly, "aria-invalid": Boolean(error), "aria-describedby": error ? errorId : undefined, onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(name, event.currentTarget.value) };
-  const type = name === "phone" ? "tel" : name === "email" ? "email" : "text";
-  return <div className={`form-field${multiline ? " form-field-wide" : ""}`}><label htmlFor={name}>{label}{optional ? <span>{optionalLabel}</span> : null}</label>{multiline ? <textarea {...common} rows={name === "deliveryNotes" ? 3 : 4} /> : <input {...common} inputMode={inputMode} type={type} />}{error && <p className="field-error" id={errorId}>{error}</p>}</div>;
+  const common = { id: name, name, autoComplete, value, required: true, "aria-invalid": Boolean(error), "aria-describedby": error ? errorId : undefined, onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(name, event.currentTarget.value) };
+  return <div className={`form-field${multiline ? " form-field-wide" : ""}`}><label htmlFor={name}>{label}</label>{multiline ? <textarea {...common} rows={4} /> : <input {...common} type="text" />}{error && <p className="field-error" id={errorId}>{error}</p>}</div>;
 }

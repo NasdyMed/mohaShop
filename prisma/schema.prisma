@@ -63,12 +63,12 @@ model Order {
   number                    String      @unique
   customerFirstName         String
   customerLastName          String
-  customerPhone             String
+  customerPhone             String?
   customerEmail             String?
   customerAddress           String
   customerAddressComplement String?
   customerCity              String
-  customerRegion            String
+  customerRegion            String?
   customerPostalCode        String?
   customerCountry           String      @default("Maroc")
   deliveryNotes             String?

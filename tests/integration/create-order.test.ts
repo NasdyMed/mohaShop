@@ -4,7 +4,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const RUN_ID = `task6_${process.pid}_${randomUUID().replaceAll("-", "")}`;
 const PRODUCT_PREFIX = `${RUN_ID}_product_`;
-const PHONE = "+212612345678";
 
 type Db = typeof import("@/lib/db").db;
 type CreateOrder = typeof import("@/lib/orders/create-order").createOrder;
@@ -16,15 +15,8 @@ function checkout(items: Array<{ variantId: string; quantity: number }>) {
   return {
     firstName: "  Amina   Zahra ",
     lastName: " El   Idrissi ",
-    phone: "06 12 34 56 78",
-    email: "amina@example.com",
     address: "  12 rue   Atlas, Rabat  ",
-    addressComplement: "Appartement 4",
     city: "Rabat",
-    region: "Rabat-Salé-Kénitra",
-    postalCode: "10000",
-    country: "Maroc",
-    deliveryNotes: "Appeler avant la livraison",
     items,
   };
 }
@@ -107,15 +99,15 @@ describe.sequential("createOrder PostgreSQL integration", () => {
     expect(saved).toMatchObject({
       customerFirstName: "Amina Zahra",
       customerLastName: "El Idrissi",
-      customerPhone: PHONE,
-      customerEmail: "amina@example.com",
+      customerPhone: null,
+      customerEmail: null,
       customerAddress: "12 rue Atlas, Rabat",
-      customerAddressComplement: "Appartement 4",
+      customerAddressComplement: null,
       customerCity: "Rabat",
-      customerRegion: "Rabat-Salé-Kénitra",
-      customerPostalCode: "10000",
+      customerRegion: null,
+      customerPostalCode: null,
       customerCountry: "Maroc",
-      deliveryNotes: "Appeler avant la livraison",
+      deliveryNotes: null,
       totalDh: 1480,
     });
     expect(saved.items).toEqual([
@@ -139,22 +131,22 @@ describe.sequential("createOrder PostgreSQL integration", () => {
 
   it("maps excessive and nonexistent variants to OUT_OF_STOCK without partial writes", async () => {
     const { variant } = await seedVariant("out-of-stock");
-    const before = await db.order.count({ where: { customerPhone: PHONE } });
+    const before = await db.order.count();
     await expect(createOrder(checkout([{ variantId: variant.id, quantity: 3 }]))).rejects.toMatchObject({ code: "OUT_OF_STOCK" });
     await expect(createOrder(checkout([{ variantId: `${RUN_ID}_missing`, quantity: 1 }]))).rejects.toMatchObject({ code: "OUT_OF_STOCK" });
-    expect(await db.order.count({ where: { customerPhone: PHONE } })).toBe(before);
+    expect(await db.order.count()).toBe(before);
     expect((await db.productVariant.findUniqueOrThrow({ where: { id: variant.id } })).stock).toBe(2);
   });
 
   it("rolls back all lines if a later line cannot be fulfilled", async () => {
     const first = await seedVariant("rollback-a", 2);
     const second = await seedVariant("rollback-b", 0);
-    const before = await db.order.count({ where: { customerPhone: PHONE } });
+    const before = await db.order.count();
     await expect(createOrder(checkout([
       { variantId: first.variant.id, quantity: 1 },
       { variantId: second.variant.id, quantity: 1 },
     ]))).rejects.toMatchObject({ code: "OUT_OF_STOCK" });
-    expect(await db.order.count({ where: { customerPhone: PHONE } })).toBe(before);
+    expect(await db.order.count()).toBe(before);
     expect((await db.productVariant.findUniqueOrThrow({ where: { id: first.variant.id } })).stock).toBe(2);
   });
 

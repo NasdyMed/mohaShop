@@ -9,15 +9,8 @@ import {
 const validCheckout = {
   firstName: "Amina",
   lastName: "El Mansouri",
-  phone: "0612345678",
-  email: "",
   address: "12 rue Atlas, Rabat",
-  addressComplement: "",
   city: "Rabat",
-  region: "Rabat-Salé-Kénitra",
-  postalCode: "",
-  country: "Maroc",
-  deliveryNotes: "",
   items: [{ variantId: "variant-1", quantity: 2 }],
 };
 
@@ -66,12 +59,41 @@ describe("Moroccan phone validation", () => {
 });
 
 describe("checkoutSchema", () => {
-  it("returns normalized customer details and a canonical phone", () => {
+  it("accepts exactly the four requested customer fields", () => {
+    const result = checkoutSchema.parse({
+      firstName: "Amina",
+      lastName: "El Idrissi",
+      city: "Rabat",
+      address: "12 avenue Mohammed V",
+      items: [{ variantId: "variant-1", quantity: 1 }],
+    });
+
+    expect(result).toMatchObject({
+      firstName: "Amina",
+      lastName: "El Idrissi",
+      city: "Rabat",
+      address: "12 avenue Mohammed V",
+    });
+  });
+
+  it("rejects removed delivery fields", () => {
+    const result = checkoutSchema.safeParse({
+      firstName: "Amina",
+      lastName: "El Idrissi",
+      city: "Rabat",
+      address: "12 avenue Mohammed V",
+      phone: "0612345678",
+      items: [{ variantId: "variant-1", quantity: 1 }],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("returns normalized customer delivery details", () => {
     const parsed = checkoutSchema.parse({
       ...validCheckout,
       firstName: "  Amina   Zahra ",
       lastName: "  El-Mansouri  ",
-      phone: " 06 12 34 56 78 ",
       address: "  12   rue Atlas,   Rabat  ",
     });
 
@@ -79,14 +101,8 @@ describe("checkoutSchema", () => {
       ...validCheckout,
       firstName: "Amina Zahra",
       lastName: "El-Mansouri",
-      phone: "+212612345678",
       address: "12 rue Atlas, Rabat",
-      email: undefined,
-      addressComplement: undefined,
-      postalCode: undefined,
-      deliveryNotes: undefined,
     });
-    expect(parsed.phone).toMatch(/^\+212[67]\d{8}$/);
   });
 
   it.each(["Él", "O’Connor", "بناني", "Al-Amine"]) (
@@ -227,12 +243,9 @@ describe("checkoutSchema", () => {
     expect(issueAt(result, [...path])?.message).toMatch(/requis|référence|quantité|nombre/i);
   });
 
-  it("rejects invalid phones and unexpected input fields with French errors", () => {
-    const badPhone = checkoutSchema.safeParse({ ...validCheckout, phone: "+33612345678" });
+  it("rejects unexpected input fields with French errors", () => {
     const unexpected = checkoutSchema.safeParse({ ...validCheckout, totalDh: 100 });
 
-    expect(badPhone.success).toBe(false);
-    if (!badPhone.success) expect(badPhone.error.issues[0]?.message).toMatch(/téléphone/i);
     expect(unexpected.success).toBe(false);
     if (!unexpected.success) expect(unexpected.error.issues[0]).toMatchObject({
       message: "Champ non reconnu.",
@@ -250,30 +263,8 @@ describe("checkoutSchema", () => {
     });
   });
 
-  it("validates and normalizes complete Moroccan delivery details", () => {
-    const result = checkoutSchema.parse({
-      ...validCheckout,
-      email: " AMINA@EXAMPLE.COM ",
-      addressComplement: "  Appartement 4, 2e étage ",
-      postalCode: "10000",
-      deliveryNotes: "  Appeler avant la livraison  ",
-    });
-
-    expect(result).toMatchObject({
-      email: "amina@example.com",
-      addressComplement: "Appartement 4, 2e étage",
-      city: "Rabat",
-      region: "Rabat-Salé-Kénitra",
-      postalCode: "10000",
-      country: "Maroc",
-      deliveryNotes: "Appeler avant la livraison",
-    });
-  });
-
-  it("requires city and region while keeping secondary delivery fields optional", () => {
+  it("requires city", () => {
     expect(checkoutSchema.safeParse({ ...validCheckout, city: "" }).success).toBe(false);
-    expect(checkoutSchema.safeParse({ ...validCheckout, region: "" }).success).toBe(false);
     expect(checkoutSchema.safeParse(validCheckout).success).toBe(true);
-    expect(checkoutSchema.safeParse({ ...validCheckout, email: "incorrect", postalCode: "12" }).success).toBe(false);
   });
 });

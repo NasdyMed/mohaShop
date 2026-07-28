@@ -39,14 +39,14 @@ describe("createOrderAction", () => {
 
   it("returns a safe retry result before order work when either bucket is limited", async () => {
     mocks.allow.mockResolvedValue(false);
-    const input = { phone: " 06 12 34 56 78 ", privateCustomer: "must not log" };
+    const input = { privateCustomer: "must not log" };
 
     await expect(createOrderAction(input)).resolves.toEqual({
       ok: false,
       code: "RATE_LIMITED",
       message: "Trop de commandes ont été tentées. Veuillez réessayer dans quelques minutes.",
     });
-    expect(mocks.allow).toHaveBeenCalledWith({ ip: "192.0.2.1", phone: "+212612345678" });
+    expect(mocks.allow).toHaveBeenCalledWith({ ip: "192.0.2.1" });
     expect(mocks.createOrder).not.toHaveBeenCalled();
   });
 

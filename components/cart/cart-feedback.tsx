@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { useStorefrontI18n } from "@/components/shop/locale-provider";
 import { localizePath } from "@/lib/i18n/config";
+import { WhatsAppLink } from "./whatsapp-link";
 
 type CartFeedbackProps = {
   clearNotice: () => void;
@@ -30,6 +31,7 @@ export function CartFeedback({ clearNotice, hydrated, itemCount, notice }: CartF
         <button type="button" aria-label={dictionary.common.close} onClick={clearNotice}>×</button>
       </aside>
     ) : null}
+    <WhatsAppLink />
     <Link
       className={`floating-cart${notice ? " is-adding" : ""}`}
       href={localizePath("/panier", locale)}

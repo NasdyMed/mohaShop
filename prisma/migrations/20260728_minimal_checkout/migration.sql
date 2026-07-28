@@ -1,0 +1,3 @@
+ALTER TABLE "Order"
+ALTER COLUMN "customerPhone" DROP NOT NULL,
+ALTER COLUMN "customerRegion" DROP NOT NULL;
