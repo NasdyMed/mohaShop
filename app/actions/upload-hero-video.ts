@@ -30,6 +30,14 @@ function hasVideoSignature(type: string, bytes: Uint8Array) {
   return false;
 }
 
+function safeProviderError(error: unknown) {
+  if (!(error instanceof Error) || !error.message.trim()) return "Erreur fournisseur inconnue.";
+  return error.message
+    .replace(/vercel_blob_rw_[^\s"']+/gi, "[token masqué]")
+    .replace(/bearer\s+[^\s"']+/gi, "Bearer [token masqué]")
+    .slice(0, 500);
+}
+
 export async function uploadHeroVideoAction(formData: FormData): Promise<Result> {
   await requireAdmin();
   const file = formData.get("file");
@@ -53,8 +61,13 @@ export async function uploadHeroVideoAction(formData: FormData): Promise<Result>
       addRandomSuffix: true,
     });
     return { ok: true, url: blob.url };
-  } catch {
-    console.error("hero_video_upload_failed", { category: "provider" });
-    return { ok: false, message: "Le téléversement de la vidéo a échoué." };
+  } catch (error) {
+    const detail = safeProviderError(error);
+    console.error("hero_video_upload_failed", {
+      category: "provider",
+      errorName: error instanceof Error ? error.name : "UnknownError",
+      message: detail,
+    });
+    return { ok: false, message: `Le téléversement de la vidéo a échoué : ${detail}` };
   }
 }

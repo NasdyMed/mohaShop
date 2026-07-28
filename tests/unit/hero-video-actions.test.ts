@@ -90,13 +90,20 @@ describe("hero video server upload", () => {
     expect(mocks.put).not.toHaveBeenCalled();
   });
 
-  it("masque l’erreur fournisseur", async () => {
-    mocks.put.mockRejectedValue(new Error("secret provider token"));
+  it("retourne le détail fournisseur utile sans exposer de token", async () => {
+    mocks.put.mockRejectedValue(new Error("Vercel Blob: upload rejected"));
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const data = new FormData();
     data.set("file", new File([mp4], "video.mp4", { type: "video/mp4" }));
-    await expect(uploadHeroVideoAction(data)).resolves.toMatchObject({ ok: false, message: expect.any(String) });
-    expect(JSON.stringify(log.mock.calls)).not.toContain("secret provider token");
+    await expect(uploadHeroVideoAction(data)).resolves.toMatchObject({
+      ok: false,
+      message: expect.stringMatching(/upload rejected/i),
+    });
+    expect(JSON.stringify(log.mock.calls)).toContain("upload rejected");
+    mocks.put.mockRejectedValue(new Error("Bearer vercel_blob_rw_super_secret"));
+    const secretResult = await uploadHeroVideoAction(data);
+    expect(JSON.stringify(secretResult)).not.toContain("super_secret");
+    expect(JSON.stringify(log.mock.calls)).not.toContain("super_secret");
     log.mockRestore();
   });
 });
