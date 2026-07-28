@@ -99,6 +99,22 @@ describe("ProductForm", () => {
     expect(within(images).getAllByRole("radio", { name: "Noir" }).every((radio) => radio.hasAttribute("checked"))).toBe(true);
   });
 
+  it("conserve les uploads réussis quand un fichier suivant échoue", async () => {
+    const user = userEvent.setup();
+    mocks.upload
+      .mockResolvedValueOnce({ ok: true, url: "https://example.com/kept.webp" })
+      .mockRejectedValueOnce(new Error("network"));
+    render(<ProductForm initialValue={{ ...validDraft, images: [] }} />);
+    await user.upload(screen.getByLabelText(/téléverser des images/i), [
+      new File(["kept"], "kept.webp", { type: "image/webp" }),
+      new File(["failed"], "failed.webp", { type: "image/webp" }),
+    ]);
+    expect(await screen.findByRole("link", { name: "Ouvrir l’image 1" })).toHaveAttribute("href", "https://example.com/kept.webp");
+    expect(screen.getByRole("alert")).toHaveTextContent(/l’import a échoué/i);
+    expect(screen.getByRole("checkbox", { name: "Noir" })).toBeEnabled();
+    expect(mocks.upload).toHaveBeenCalledTimes(2);
+  });
+
   it("verrouille l'éditeur pendant un upload différé", async () => {
     let resolve!: (value: { ok: true; url: string }) => void;
     mocks.upload.mockReturnValue(new Promise((done) => { resolve = done; }));

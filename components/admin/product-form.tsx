@@ -63,9 +63,13 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
       for (const file of files) {
         const data = new FormData();
         data.set("file", file);
-        const result = await uploadProductImageAction(data);
-        if (!result.ok) { setMessage(result.message); continue; }
-        added.push({ url: result.url, alt: `${value.name || "Produit"} — ${file.name.replace(/\.[^.]+$/, "")}`, color: preferredColor, position: value.images.length + added.length });
+        try {
+          const result = await uploadProductImageAction(data);
+          if (!result.ok) { setMessage(result.message); continue; }
+          added.push({ url: result.url, alt: `${value.name || "Produit"} — ${file.name.replace(/\.[^.]+$/, "")}`, color: preferredColor, position: value.images.length + added.length });
+        } catch {
+          setMessage("L’import a échoué. Vérifiez la configuration Vercel Blob puis réessayez.");
+        }
       }
       if (added.length) setValue((current) => {
         const activeColors = [...new Set(current.variants.filter((variant) => !variant.removed).map((variant) => variant.color))];
