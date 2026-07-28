@@ -399,7 +399,7 @@ html { scroll-behavior: smooth; }
 }
 .product-card-media {
   aspect-ratio: 1;
-  background: #f2f2f2;
+  background: #fff;
 }
 .product-card-media::after {
   display: none;
@@ -530,7 +530,7 @@ html { scroll-behavior: smooth; }
   aspect-ratio: 1 / 1.12;
   min-height: 0;
   border-radius: 4px;
-  background: #f2f2f2;
+  background: #fff;
 }
 .product-info {
   position: sticky;

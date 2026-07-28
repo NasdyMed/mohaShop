@@ -94,4 +94,11 @@ describe("catalog layout", () => {
     expect(css).toContain("#collection:target .product-card");
     expect(css).toContain("@keyframes collection-reveal");
   });
+
+  it("uses white media surfaces for product cards and the product gallery", () => {
+    const css = readFileSync(join(process.cwd(), "app/globals.css"), "utf8");
+
+    expect(css).toMatch(/\.product-card-media\s*\{[^}]*background:\s*#fff\s*;/s);
+    expect(css).toMatch(/\.product-gallery \.gallery-stage\s*\{[^}]*background:\s*#fff\s*;/s);
+  });
 });
