@@ -98,6 +98,58 @@ describe("ProductForm", () => {
     expect(within(images).getAllByRole("radio", { name: "Noir" })).toHaveLength(2);
     expect(within(images).getAllByRole("radio", { name: "Noir" }).every((radio) => radio.hasAttribute("checked"))).toBe(true);
   });
+
+  it("verrouille l'éditeur pendant un upload différé", async () => {
+    let resolve!: (value: { ok: true; url: string }) => void;
+    mocks.upload.mockReturnValue(new Promise((done) => { resolve = done; }));
+    const user = userEvent.setup();
+    render(<ProductForm initialValue={validDraft} />);
+    await user.upload(screen.getByLabelText(/téléverser des images/i), new File(["x"], "new.webp", { type: "image/webp" }));
+    expect(screen.getByRole("group", { name: "Déclinaisons" })).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("checkbox", { name: "Noir" })).toBeDisabled();
+    resolve({ ok: true, url: "https://example.com/new.webp" });
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Noir" })).toBeEnabled());
+  });
+
+  it("n'ajoute pas une image résolue sans couleur active et affiche une erreur", async () => {
+    mocks.upload.mockResolvedValue({ ok: true, url: "https://example.com/orphan.webp" });
+    const user = userEvent.setup();
+    render(<ProductForm />);
+    await user.upload(screen.getByLabelText(/téléverser des images/i), new File(["x"], "orphan.webp", { type: "image/webp" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/aucune couleur active/i);
+    expect(screen.queryByRole("region", { name: "Images du produit" })).not.toBeInTheDocument();
+  });
+
+  it("réassocie une image à la première couleur encore active si la couleur capturée disparaît", async () => {
+    let resolve!: (value: { ok: true; url: string }) => void;
+    mocks.upload.mockReturnValue(new Promise((done) => { resolve = done; }));
+    const user = userEvent.setup();
+    render(<ProductForm initialValue={{
+      ...validDraft,
+      images: [],
+      variants: [
+        { sku: "NOIR-38", size: "38", color: "Noir", stock: 0 },
+        { sku: "COGNAC-38", size: "38", color: "Cognac", stock: 0 },
+      ],
+    }} />);
+    await user.upload(screen.getByLabelText(/téléverser des images/i), new File(["x"], "new.webp", { type: "image/webp" }));
+    const capturedColor = screen.getByRole("checkbox", { name: "Noir" });
+    screen.getByRole("group", { name: "Déclinaisons" }).removeAttribute("disabled");
+    await user.click(capturedColor);
+    expect(capturedColor).not.toBeChecked();
+    resolve({ ok: true, url: "https://example.com/new.webp" });
+    const images = await screen.findByRole("region", { name: "Images du produit" });
+    expect(within(images).getByRole("radio", { name: "Cognac" })).toBeChecked();
+  });
+
+  it("affiche l'erreur serveur de couleur d'une image", async () => {
+    mocks.save.mockResolvedValue({ ok: false, code: "INVALID", message: "Erreur.", fieldErrors: {
+      "images.0.color": ["Couleur d’image invalide"],
+    } });
+    render(<ProductForm initialValue={validDraft} />);
+    fireEvent.submit(screen.getByRole("button", { name: "Enregistrer le produit" }).closest("form")!);
+    expect(await screen.findByText("Couleur d’image invalide")).toBeVisible();
+  });
 });
 
 describe("ProductForm failures and accessibility",()=>{

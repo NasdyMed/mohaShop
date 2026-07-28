@@ -33,6 +33,7 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
   });
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
   const operationLock = useRef(false);
   const [message, setMessage] = useState("");
@@ -54,7 +55,9 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
     event.target.value = "";
     if (!files.length || uploading) return;
     setUploading(true);
+    setUploadError("");
     setMessage("");
+    const preferredColor = colors[0] ?? null;
     const added: EditableImage[] = [];
     try {
       for (const file of files) {
@@ -62,9 +65,21 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
         data.set("file", file);
         const result = await uploadProductImageAction(data);
         if (!result.ok) { setMessage(result.message); continue; }
-        added.push({ url: result.url, alt: `${value.name || "Produit"} — ${file.name.replace(/\.[^.]+$/, "")}`, color: colors[0] ?? null, position: value.images.length + added.length });
+        added.push({ url: result.url, alt: `${value.name || "Produit"} — ${file.name.replace(/\.[^.]+$/, "")}`, color: preferredColor, position: value.images.length + added.length });
       }
-      if (added.length) setValue((current) => ({ ...current, images: [...current.images, ...added].map((image, position) => ({ ...image, position })) }));
+      if (added.length) setValue((current) => {
+        const activeColors = [...new Set(current.variants.filter((variant) => !variant.removed).map((variant) => variant.color))];
+        const color = preferredColor && activeColors.includes(preferredColor) ? preferredColor : activeColors[0];
+        if (!color) {
+          setUploadError("Aucune couleur active. Ajoutez une déclinaison avant d’importer une image.");
+          return current;
+        }
+        return {
+          ...current,
+          images: [...current.images, ...added.map((image) => ({ ...image, color }))]
+            .map((image, position) => ({ ...image, position })),
+        };
+      });
     } catch {
       setMessage("L’import a échoué. Vérifiez la configuration Vercel Blob puis réessayez.");
     } finally {
@@ -74,7 +89,7 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (busy || operationLock.current) return;
+    if (busy || uploading || operationLock.current) return;
     operationLock.current = true;
     setBusy(true);
     setMessage("");
@@ -103,21 +118,23 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
   }
 
   return <form className="product-form" onSubmit={submit} aria-busy={busy}>
-    {message && <p role="alert" className="form-error-summary">{message}</p>}<FieldError errors={errors.form}/>
+    {message && <p role="alert" className="form-error-summary">{message}</p>}
+    {uploadError && <p role="alert" className="form-error-summary">{uploadError}</p>}
+    <FieldError errors={errors.form}/>
     <section className="admin-form-card" aria-labelledby="product-details-title">
       <div className="admin-section-heading"><div><span className="admin-section-index">01</span><h2 id="product-details-title">Informations</h2></div><p>Les informations essentielles présentées dans la boutique.</p></div>
       <div className="product-fields-grid">
-        <label>Nom<input disabled={busy} required minLength={2} maxLength={120} aria-invalid={!!errors.name} aria-describedby={errors.name ? "product-name-error" : undefined} value={value.name} onChange={(event) => setValue({ ...value, name: event.target.value })}/></label><FieldError id="product-name-error" errors={errors.name}/>
-        <label>Nom en arabe<input dir="rtl" disabled={busy} minLength={2} maxLength={120} aria-invalid={!!errors.nameAr} aria-describedby={errors.nameAr ? "product-name-ar-error" : undefined} value={value.nameAr} onChange={(event) => setValue({ ...value, nameAr: event.target.value })}/></label><FieldError id="product-name-ar-error" errors={errors.nameAr}/>
-        <label>Slug<input disabled={busy} required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" maxLength={120} aria-invalid={!!errors.slug} aria-describedby={errors.slug ? "product-slug-error" : undefined} value={value.slug} onChange={(event) => setValue({ ...value, slug: event.target.value })}/></label><FieldError id="product-slug-error" errors={errors.slug}/>
-        <label>Prix (DH)<input disabled={busy} required type="number" min={1} max={1_000_000} aria-invalid={!!errors.priceDh} aria-describedby={errors.priceDh ? "product-price-error" : undefined} value={value.priceDh} onChange={(event) => setValue({ ...value, priceDh: Number(event.target.value) })}/></label><FieldError id="product-price-error" errors={errors.priceDh}/>
-        <label className="product-description-field">Description<textarea disabled={busy} required minLength={20} maxLength={3000} rows={6} aria-invalid={!!errors.description} aria-describedby={errors.description ? "product-description-error" : undefined} value={value.description} onChange={(event) => setValue({ ...value, description: event.target.value })}/></label><FieldError id="product-description-error" errors={errors.description}/>
-        <label className="product-description-field">Description en arabe<textarea dir="rtl" disabled={busy} minLength={20} maxLength={3000} rows={6} aria-invalid={!!errors.descriptionAr} aria-describedby={errors.descriptionAr ? "product-description-ar-error" : undefined} value={value.descriptionAr} onChange={(event) => setValue({ ...value, descriptionAr: event.target.value })}/></label><FieldError id="product-description-ar-error" errors={errors.descriptionAr}/>
+        <label>Nom<input disabled={busy || uploading} required minLength={2} maxLength={120} aria-invalid={!!errors.name} aria-describedby={errors.name ? "product-name-error" : undefined} value={value.name} onChange={(event) => setValue({ ...value, name: event.target.value })}/></label><FieldError id="product-name-error" errors={errors.name}/>
+        <label>Nom en arabe<input dir="rtl" disabled={busy || uploading} minLength={2} maxLength={120} aria-invalid={!!errors.nameAr} aria-describedby={errors.nameAr ? "product-name-ar-error" : undefined} value={value.nameAr} onChange={(event) => setValue({ ...value, nameAr: event.target.value })}/></label><FieldError id="product-name-ar-error" errors={errors.nameAr}/>
+        <label>Slug<input disabled={busy || uploading} required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" maxLength={120} aria-invalid={!!errors.slug} aria-describedby={errors.slug ? "product-slug-error" : undefined} value={value.slug} onChange={(event) => setValue({ ...value, slug: event.target.value })}/></label><FieldError id="product-slug-error" errors={errors.slug}/>
+        <label>Prix (DH)<input disabled={busy || uploading} required type="number" min={1} max={1_000_000} aria-invalid={!!errors.priceDh} aria-describedby={errors.priceDh ? "product-price-error" : undefined} value={value.priceDh} onChange={(event) => setValue({ ...value, priceDh: Number(event.target.value) })}/></label><FieldError id="product-price-error" errors={errors.priceDh}/>
+        <label className="product-description-field">Description<textarea disabled={busy || uploading} required minLength={20} maxLength={3000} rows={6} aria-invalid={!!errors.description} aria-describedby={errors.description ? "product-description-error" : undefined} value={value.description} onChange={(event) => setValue({ ...value, description: event.target.value })}/></label><FieldError id="product-description-error" errors={errors.description}/>
+        <label className="product-description-field">Description en arabe<textarea dir="rtl" disabled={busy || uploading} minLength={20} maxLength={3000} rows={6} aria-invalid={!!errors.descriptionAr} aria-describedby={errors.descriptionAr ? "product-description-ar-error" : undefined} value={value.descriptionAr} onChange={(event) => setValue({ ...value, descriptionAr: event.target.value })}/></label><FieldError id="product-description-ar-error" errors={errors.descriptionAr}/>
       </div>
       <p className="admin-inline-note">Le contenu français sera utilisé dans la boutique arabe si une traduction est vide.</p>
       <div className="product-visibility-row">
         <div><strong>Publication</strong><span>{value.isVisible ? "Le produit est visible dans la boutique." : "Le produit reste en brouillon."}</span></div>
-        <label className="admin-switch"><input disabled={busy || (!value.isVisible && !canPublish)} type="checkbox" checked={value.isVisible} onChange={(event) => setValue({ ...value, isVisible: event.target.checked })}/><span aria-hidden="true"/><b>Produit visible</b></label>
+        <label className="admin-switch"><input disabled={busy || uploading || (!value.isVisible && !canPublish)} type="checkbox" checked={value.isVisible} onChange={(event) => setValue({ ...value, isVisible: event.target.checked })}/><span aria-hidden="true"/><b>Produit visible</b></label>
       </div>
       <FieldError errors={errors.isVisible}/>
       {!canPublish && <p className="admin-inline-note">Ajoutez une image et une déclinaison pour publier. Le brouillon reste enregistrable.</p>}
@@ -126,7 +143,7 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
     <VariantEditor productSlug={value.slug} value={value.variants} onChange={(variants) => {
       const hasActiveVariants = variants.some((variant) => !variant.removed);
       setValue({ ...value, variants, isVisible: value.isVisible && hasActiveVariants && value.images.length > 0 });
-    }} disabled={busy} errors={errors} protectedColors={new Set(value.images.flatMap((image) => image.color ? [image.color] : []))}
+    }} disabled={busy || uploading} errors={errors} protectedColors={new Set(value.images.flatMap((image) => image.color ? [image.color] : []))}
       onConfirmedColorRemoval={(color) => setValue((current) => ({
         ...current,
         images: current.images.filter((image) => image.color !== color).map((image, position) => ({ ...image, position })),
@@ -147,24 +164,24 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
               <Image src={image.url} alt={image.alt} width={420} height={320}/>{index === 0 && <span>Couverture</span>}
             </a>
             <div className="admin-image-card-body">
-              <label>Texte alternatif<input disabled={busy} required minLength={2} maxLength={160} aria-invalid={!!errors[`images.${index}.alt`]} aria-describedby={errors[`images.${index}.alt`] ? `product-image-${index}-alt-error` : undefined} value={image.alt} onChange={(event) => setValue({ ...value, images: value.images.map((item, current) => current === index ? { ...item, alt: event.target.value } : item) })}/></label>
+              <label>Texte alternatif<input disabled={busy || uploading} required minLength={2} maxLength={160} aria-invalid={!!errors[`images.${index}.alt`]} aria-describedby={errors[`images.${index}.alt`] ? `product-image-${index}-alt-error` : undefined} value={image.alt} onChange={(event) => setValue({ ...value, images: value.images.map((item, current) => current === index ? { ...item, alt: event.target.value } : item) })}/></label>
               <fieldset className="admin-image-color-picker"><legend>Visuel pour <strong>{image.color ?? "Aucune couleur"}</strong></legend><div className="admin-image-color-options">
                 {productColorOptions.map((color) => {
                   const available = colors.includes(color);
-                  return <label className={`admin-color-option${available ? "" : " is-disabled"}`} title={available ? color : `${color} — ajoutez cette déclinaison`} key={color}><input type="radio" name={`image-color-${index}`} aria-label={color} checked={image.color === color} disabled={busy || !available} onChange={() => setValue({ ...value, images: value.images.map((item, current) => current === index ? { ...item, color } : item) })}/><span style={{ backgroundColor: colorSwatch(color).background }} aria-hidden="true"/></label>;
+                  return <label className={`admin-color-option${available ? "" : " is-disabled"}`} title={available ? color : `${color} — ajoutez cette déclinaison`} key={color}><input type="radio" name={`image-color-${index}`} aria-label={color} checked={image.color === color} disabled={busy || uploading || !available} onChange={() => setValue({ ...value, images: value.images.map((item, current) => current === index ? { ...item, color } : item) })}/><span style={{ backgroundColor: colorSwatch(color).background }} aria-hidden="true"/></label>;
                 })}
               </div></fieldset>
               {colors.length === 0 && <p className="admin-inline-note">Ajoutez d’abord une déclinaison pour associer les images.</p>}
-              <FieldError id={`product-image-${index}-alt-error`} errors={errors[`images.${index}.alt`]}/><FieldError errors={errors[`images.${index}.url`]}/><FieldError errors={errors[`images.${index}.position`]}/><FieldError errors={errors[`images.${index}.id`]}/>
+              <FieldError id={`product-image-${index}-alt-error`} errors={errors[`images.${index}.alt`]}/><FieldError errors={errors[`images.${index}.url`]}/><FieldError errors={errors[`images.${index}.color`]}/><FieldError errors={errors[`images.${index}.position`]}/><FieldError errors={errors[`images.${index}.id`]}/>
               <div className="admin-image-actions">
-                <button className="admin-icon-button" aria-label={`Déplacer l’image ${index + 1} vers le haut`} title="Monter" disabled={busy || index === 0} type="button" onClick={() => move(index, -1)}><ArrowIcon direction="up"/></button>
-                <button className="admin-icon-button" aria-label={`Déplacer l’image ${index + 1} vers le bas`} title="Descendre" disabled={busy || index === value.images.length - 1} type="button" onClick={() => move(index, 1)}><ArrowIcon direction="down"/></button>
-                <button className="admin-icon-button is-danger" aria-label={`Supprimer l’image ${index + 1}`} title="Supprimer" disabled={busy} type="button" onClick={() => setValue({ ...value, isVisible: false, images: value.images.filter((_, current) => current !== index).map((item, position) => ({ ...item, position })) })}><TrashIcon/></button>
+                <button className="admin-icon-button" aria-label={`Déplacer l’image ${index + 1} vers le haut`} title="Monter" disabled={busy || uploading || index === 0} type="button" onClick={() => move(index, -1)}><ArrowIcon direction="up"/></button>
+                <button className="admin-icon-button" aria-label={`Déplacer l’image ${index + 1} vers le bas`} title="Descendre" disabled={busy || uploading || index === value.images.length - 1} type="button" onClick={() => move(index, 1)}><ArrowIcon direction="down"/></button>
+                <button className="admin-icon-button is-danger" aria-label={`Supprimer l’image ${index + 1}`} title="Supprimer" disabled={busy || uploading} type="button" onClick={() => setValue({ ...value, isVisible: false, images: value.images.filter((_, current) => current !== index).map((item, position) => ({ ...item, position })) })}><TrashIcon/></button>
               </div>
             </div>
           </article>)}
         </div>}
     </section>
-    <div className="admin-form-actions"><p>{value.isVisible ? "Les modifications seront visibles immédiatement." : "Ce produit sera enregistré en brouillon."}</p><button className="admin-submit" disabled={busy}>{busy ? <LoadingLabel>Enregistrement…</LoadingLabel> : "Enregistrer le produit"}</button></div>
+    <div className="admin-form-actions"><p>{value.isVisible ? "Les modifications seront visibles immédiatement." : "Ce produit sera enregistré en brouillon."}</p><button className="admin-submit" disabled={busy || uploading}>{busy ? <LoadingLabel>Enregistrement…</LoadingLabel> : "Enregistrer le produit"}</button></div>
   </form>;
 }
