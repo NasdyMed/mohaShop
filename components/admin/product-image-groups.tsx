@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useRef, useState } from "react";
+import { KeyboardEvent, useRef, useState } from "react";
 
 import { colorSwatch } from "@/lib/catalog/color-swatches";
 import { EditableImage, groupImagesByColor, MAX_IMAGES_PER_COLOR } from "@/lib/catalog/product-image-groups";
@@ -29,6 +29,7 @@ function Arrow({ down = false }: { down?: boolean }) {
 export function ProductImageGroups(props: Props) {
   const [activeColor, setActiveColor] = useState(props.colors[0] ?? "");
   const input = useRef<HTMLInputElement>(null);
+  const tabs = useRef<Array<HTMLButtonElement | null>>([]);
   const selectedColor = props.colors.includes(activeColor) ? activeColor : (props.colors[0] ?? "");
   const groups = groupImagesByColor(props.images, props.colors);
   const active = groups.find((group) => group.color === selectedColor) ?? groups[0];
@@ -37,12 +38,31 @@ export function ProductImageGroups(props: Props) {
   if (!props.colors.length) return <div className="admin-image-empty"><span aria-hidden="true">◇</span><strong>Aucune couleur active</strong><p>Ajoutez une déclinaison avant d’importer des images.</p></div>;
   return <div className="product-image-groups">
     <div className="product-image-tabs" role="tablist" aria-label="Couleurs des images">
-      {groups.map((group) => <button type="button" role="tab" aria-selected={group.color === selectedColor}
+      {groups.map((group, index) => {
+        const selected = group.color === selectedColor;
+        const tabId = `product-images-tab-${index}`;
+        const panelId = `product-images-panel-${index}`;
+        const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+          let next = index;
+          if (event.key === "ArrowRight") next = (index + 1) % groups.length;
+          else if (event.key === "ArrowLeft") next = (index - 1 + groups.length) % groups.length;
+          else if (event.key === "Home") next = 0;
+          else if (event.key === "End") next = groups.length - 1;
+          else return;
+          event.preventDefault();
+          setActiveColor(groups[next].color);
+          tabs.current[next]?.focus();
+        };
+        return <button type="button" role="tab" id={tabId} aria-controls={panelId} aria-selected={selected}
+        tabIndex={selected ? 0 : -1} ref={(node) => { tabs.current[index] = node; }} onKeyDown={onKeyDown}
         className="product-image-tab" key={group.color} onClick={() => setActiveColor(group.color)}>
         <span style={{ backgroundColor: colorSwatch(group.color).background }} aria-hidden="true"/>{group.color}
         <small>{group.images.length}</small>
-      </button>)}
+      </button>;
+      })}
     </div>
+    <div role="tabpanel" id={`product-images-panel-${Math.max(0, groups.findIndex((group) => group.color === selectedColor))}`}
+      aria-labelledby={`product-images-tab-${Math.max(0, groups.findIndex((group) => group.color === selectedColor))}`}>
     <div className="product-image-group-toolbar">
       <div><strong>{active?.color}</strong><span>{count} images sur {MAX_IMAGES_PER_COLOR}</span></div>
       <input ref={input} className="visually-hidden" aria-label={`Téléverser des images pour ${active?.color}`}
@@ -84,5 +104,6 @@ export function ProductImageGroups(props: Props) {
           </article>;
         })}
       </div>}
+    </div>
   </div>;
 }

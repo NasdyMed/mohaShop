@@ -30,6 +30,23 @@ beforeEach(() => vi.clearAllMocks());
 afterEach(cleanup);
 
 describe("ProductForm", () => {
+  it("groups an interleaved initial gallery and submits unique global positions", async () => {
+    mocks.save.mockResolvedValue({ ok: false, code: "INVALID", message: "stop", fieldErrors: {} });
+    const user = userEvent.setup();
+    render(<ProductForm initialValue={{ ...validDraft, images: [
+      { url: "https://example.com/cognac.webp", alt: "Cognac", color: "Cognac", position: 0 },
+      { url: "https://example.com/noir.webp", alt: "Noir", color: "Noir", position: 1 },
+      { url: "https://example.com/rose.webp", alt: "Rose", color: "Rose", position: 2 },
+    ], variants: [
+      validDraft.variants[0],
+      { sku: "COGNAC-38", size: "38", color: "Cognac", stock: 2 },
+    ] }} />);
+    await user.click(screen.getByRole("button", { name: "Enregistrer le produit" }));
+    await waitFor(() => expect(mocks.save).toHaveBeenCalled());
+    expect(mocks.save.mock.calls[0][0].images.map((image: typeof validDraft.images[0]) => `${image.color}:${image.position}`))
+      .toEqual(["Noir:0", "Cognac:1", "Rose:2"]);
+  });
+
   it("permet de saisir les traductions arabes facultatives", () => {
     render(<ProductForm initialValue={validDraft} />);
     expect(screen.getByRole("textbox", { name: "Nom en arabe" })).toHaveAttribute("dir", "rtl");
@@ -145,6 +162,30 @@ describe("ProductForm", () => {
     resolve({ ok: true, url: "https://example.com/new.webp" });
     await screen.findByRole("region", { name: "Images du produit" });
     expect(screen.getByRole("tab", { name: /Cognac/ })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("does not overflow a full fallback color when the requested color disappears", async () => {
+    let resolve!: (value: { ok: true; url: string }) => void;
+    mocks.upload.mockReturnValue(new Promise((done) => { resolve = done; }));
+    const user = userEvent.setup();
+    const cognacImages = Array.from({ length: 6 }, (_, position) => ({
+      url: `https://example.com/cognac-${position}.webp`, alt: `Cognac ${position}`, color: "Cognac", position,
+    }));
+    render(<ProductForm initialValue={{ ...validDraft, images: cognacImages, variants: [
+      { sku: "NOIR-38", size: "38", color: "Noir", stock: 1 },
+      { sku: "COGNAC-38", size: "38", color: "Cognac", stock: 1 },
+    ] }} />);
+    await user.upload(screen.getByLabelText(/téléverser des images pour Noir/i), new File(["x"], "late.webp", { type: "image/webp" }));
+    screen.getByRole("group", { name: "Déclinaisons" }).removeAttribute("disabled");
+    const noir = screen.getByRole("checkbox", { name: "Noir" });
+    noir.removeAttribute("disabled");
+    fireEvent.click(noir);
+    await user.click(screen.getByRole("button", { name: "Confirmer le retrait" }));
+    resolve({ ok: true, url: "https://example.com/late.webp" });
+    expect(await screen.findByRole("alert")).toHaveTextContent(/maximum 6 images/i);
+    await user.click(screen.getByRole("button", { name: "Enregistrer le produit" }));
+    await waitFor(() => expect(mocks.save).toHaveBeenCalled());
+    expect(mocks.save.mock.calls[0][0].images).toHaveLength(6);
   });
 
   it("affiche l'erreur serveur de couleur d'une image", async () => {

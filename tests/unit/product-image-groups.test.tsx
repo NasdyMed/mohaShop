@@ -38,6 +38,28 @@ describe("product image group helpers", () => {
     ]);
     expect(moved.map((image) => image.position)).toEqual([0, 1, 2, 3]);
   });
+
+  it("returns an unchanged copy for an invalid source index", () => {
+    const mixed = [
+      { url: "u1", alt: "Unknown 1", color: "Rose", position: 0 },
+      { url: "n1", alt: "Noir", color: "Noir", position: 2 },
+      { url: "u2", alt: "Unknown 2", color: null, position: 1 },
+    ];
+    const ordered = moveImageWithinColor(mixed, ["Noir"], "Noir", 8, -1);
+    expect(ordered).toEqual(mixed);
+    expect(ordered).not.toBe(mixed);
+  });
+
+  it("keeps unknown colors stable at the end after a valid move", () => {
+    const mixed = [
+      { url: "u1", alt: "Unknown 1", color: "Rose", position: 0 },
+      { url: "n2", alt: "Noir 2", color: "Noir", position: 2 },
+      { url: "u2", alt: "Unknown 2", color: null, position: 1 },
+      { url: "n1", alt: "Noir 1", color: "Noir", position: 0 },
+    ];
+    const moved = moveImageWithinColor(mixed, ["Noir"], "Noir", 1, -1);
+    expect(moved.map((image) => image.alt)).toEqual(["Noir 2", "Noir 1", "Unknown 1", "Unknown 2"]);
+  });
 });
 
 describe("ProductImageGroups", () => {
@@ -78,5 +100,25 @@ describe("ProductImageGroups", () => {
       onUploadFiles={vi.fn()} onChangeAlt={vi.fn()} onMoveWithinColor={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByRole("tab", { name: /Noir/ })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText(/aucune image pour Noir/i)).toBeVisible();
+  });
+
+  it("implements roving tabs with keyboard navigation and linked tabpanels", async () => {
+    const user = userEvent.setup();
+    render(<ProductImageGroups colors={["Noir", "Cognac"]} images={images} errors={{}}
+      onUploadFiles={vi.fn()} onChangeAlt={vi.fn()} onMoveWithinColor={vi.fn()} onDelete={vi.fn()} />);
+    const noir = screen.getByRole("tab", { name: /Noir/ });
+    const cognac = screen.getByRole("tab", { name: /Cognac/ });
+    expect(noir).toHaveAttribute("tabindex", "0");
+    expect(cognac).toHaveAttribute("tabindex", "-1");
+    expect(noir).toHaveAttribute("aria-controls", expect.stringMatching(/panel/));
+    const panel = screen.getByRole("tabpanel");
+    expect(panel).toHaveAttribute("aria-labelledby", noir.id);
+    noir.focus();
+    await user.keyboard("{ArrowRight}");
+    expect(cognac).toHaveFocus();
+    expect(cognac).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tabpanel")).toHaveAttribute("aria-labelledby", cognac.id);
+    await user.keyboard("{Home}");
+    expect(noir).toHaveFocus();
   });
 });

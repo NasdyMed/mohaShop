@@ -39,7 +39,11 @@ export function moveImageWithinColor<T extends EditableImage>(
   const groups = groupImagesByColor(images, colors);
   const group = groups.find((item) => item.color === color);
   const target = index + delta;
-  if (!group || target < 0 || target >= group.images.length) return orderImagesByColor(images, colors);
+  if (!group || index < 0 || index >= group.images.length || target < 0 || target >= group.images.length) return [...images];
   [group.images[index], group.images[target]] = [group.images[target], group.images[index]];
-  return normalizeImagePositions(groups.flatMap((item) => item.images));
+  const known = new Set<string | null>(colors);
+  return normalizeImagePositions([
+    ...groups.flatMap((item) => item.images),
+    ...images.filter((image) => !known.has(image.color)),
+  ]);
 }

@@ -22,7 +22,9 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
     const initial = initialValue ?? empty;
     const variants = initial.variants.map((variant) => ({ ...variant, color: normalizeProductColor(variant.color) }));
     const firstColor = variants[0]?.color ?? null;
-    return { ...initial, images: initial.images.map((image) => ({ ...image, color: image.color || firstColor || "" })), variants };
+    const images = initial.images.map((image) => ({ ...image, color: image.color || firstColor || "" }));
+    const colors = [...new Set(variants.filter((variant) => !variant.removed).map((variant) => variant.color))];
+    return { ...initial, images: orderImagesByColor(images, colors), variants };
   });
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -61,9 +63,16 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
           setUploadError("Aucune couleur active. Ajoutez une déclinaison avant d’importer une image.");
           return current;
         }
+        const capacity = Math.max(0, MAX_IMAGES_PER_COLOR - current.images.filter((image) => image.color === color).length);
+        const accepted = added.slice(0, capacity);
+        if (!accepted.length) {
+          setUploadError(`Maximum ${MAX_IMAGES_PER_COLOR} images par couleur.`);
+          return current;
+        }
+        if (accepted.length < added.length) setUploadError(`Maximum ${MAX_IMAGES_PER_COLOR} images par couleur.`);
         return {
           ...current,
-          images: orderImagesByColor([...current.images, ...added.map((image) => ({ ...image, color }))], activeColors),
+          images: orderImagesByColor([...current.images, ...accepted.map((image) => ({ ...image, color }))], activeColors),
         };
       });
     } catch {
@@ -87,7 +96,8 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
           ...(id ? { id } : {}),
           sku, size, color, stock: removed ? 0 : stock,
         }));
-      const result = await saveProductAction({ ...value, variants });
+      const selectedColors = [...new Set(value.variants.filter((variant) => !variant.removed).map((variant) => variant.color))];
+      const result = await saveProductAction({ ...value, images: orderImagesByColor(value.images, selectedColors), variants });
       if (!result.ok) {
         setMessage(result.message);
         setErrors(result.fieldErrors);
@@ -128,7 +138,8 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
 
     <VariantEditor productSlug={value.slug} value={value.variants} onChange={(variants) => {
       const hasActiveVariants = variants.some((variant) => !variant.removed);
-      setValue({ ...value, variants, isVisible: value.isVisible && hasActiveVariants && value.images.length > 0 });
+      const selectedColors = [...new Set(variants.filter((variant) => !variant.removed).map((variant) => variant.color))];
+      setValue({ ...value, variants, images: orderImagesByColor(value.images, selectedColors), isVisible: value.isVisible && hasActiveVariants && value.images.length > 0 });
     }} disabled={busy || uploading} errors={errors} protectedColors={new Set(value.images.flatMap((image) => image.color ? [image.color] : []))}
       onConfirmedColorRemoval={(color) => setValue((current) => {
         const images = normalizeImagePositions(current.images.filter((image) => image.color !== color));
