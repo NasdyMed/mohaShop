@@ -36,18 +36,30 @@ const url = "https://store.public.blob.vercel-storage.com/hero/a.mp4";
 const input = { url, title: "Vidéo accueil", position: 0, isVisible: true };
 const mp4 = new Uint8Array([0, 0, 0, 12, 0x66, 0x74, 0x79, 0x70, 0, 0, 0, 0]);
 const webm = new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 0, 0, 0, 0]);
+function uploadForm(file?: File, position = 0) {
+  const data = new FormData();
+  if (file) data.set("file", file);
+  data.set("position", String(position));
+  return data;
+}
 
 describe("hero video server upload", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.requireAdmin.mockResolvedValue({});
     mocks.put.mockResolvedValue({ url: "https://store.public.blob.vercel-storage.com/hero/video.mp4" });
+    mocks.create.mockResolvedValue({
+      id: "cm12345678901234567890123",
+      url: "https://store.public.blob.vercel-storage.com/hero/video.mp4",
+      title: "video",
+      position: 0,
+      isVisible: false,
+    });
   });
 
   it("authentifie avant de lire le fichier", async () => {
     mocks.requireAdmin.mockRejectedValue(new Error("NEXT_REDIRECT"));
-    const data = new FormData();
-    data.set("file", new File([mp4], "video.mp4", { type: "video/mp4" }));
+    const data = uploadForm(new File([mp4], "video.mp4", { type: "video/mp4" }));
     await expect(uploadHeroVideoAction(data)).rejects.toThrow("NEXT_REDIRECT");
     expect(mocks.put).not.toHaveBeenCalled();
   });
@@ -56,17 +68,22 @@ describe("hero video server upload", () => {
     ["video/mp4", "mp4", mp4],
     ["video/webm", "webm", webm],
   ])("téléverse un fichier %s valide sous un chemin serveur", async (type, extension, bytes) => {
-    const data = new FormData();
-    data.set("file", new File([bytes], `original.${extension}`, { type }));
-    await expect(uploadHeroVideoAction(data)).resolves.toEqual({
+    const data = uploadForm(new File([bytes], `original.${extension}`, { type }));
+    await expect(uploadHeroVideoAction(data)).resolves.toMatchObject({
       ok: true,
-      url: "https://store.public.blob.vercel-storage.com/hero/video.mp4",
+      video: { id: "cm12345678901234567890123" },
     });
     expect(mocks.put).toHaveBeenCalledWith(
       expect.stringMatching(new RegExp(`^hero/[0-9a-f-]{36}\\.${extension}$`)),
       expect.any(File),
       { access: "public", addRandomSuffix: true },
     );
+    expect(mocks.create).toHaveBeenCalledWith({
+      url: "https://store.public.blob.vercel-storage.com/hero/video.mp4",
+      title: "original",
+      position: 0,
+      isVisible: false,
+    });
   });
 
   it.each([
@@ -75,8 +92,7 @@ describe("hero video server upload", () => {
     [new File([], "empty.mp4", { type: "video/mp4" }), /entre 1 octet et 4 mio/i],
     [new File(["invalid"], "fake.mp4", { type: "video/mp4" }), /vidéo valide/i],
   ])("refuse un fichier invalide", async (file, message) => {
-    const data = new FormData();
-    if (file) data.set("file", file);
+    const data = uploadForm(file ?? undefined);
     await expect(uploadHeroVideoAction(data)).resolves.toMatchObject({ ok: false, message: expect.stringMatching(message) });
     expect(mocks.put).not.toHaveBeenCalled();
   });
@@ -84,8 +100,7 @@ describe("hero video server upload", () => {
   it("refuse une vidéo supérieure à 4 Mio", async () => {
     const file = new File([mp4], "large.mp4", { type: "video/mp4" });
     Object.defineProperty(file, "size", { value: 4 * 1024 * 1024 + 1 });
-    const data = new FormData();
-    data.set("file", file);
+    const data = uploadForm(file);
     await expect(uploadHeroVideoAction(data)).resolves.toMatchObject({ ok: false, message: expect.stringMatching(/4 mio/i) });
     expect(mocks.put).not.toHaveBeenCalled();
   });
@@ -93,8 +108,7 @@ describe("hero video server upload", () => {
   it("retourne le détail fournisseur utile sans exposer de token", async () => {
     mocks.put.mockRejectedValue(new Error("Vercel Blob: upload rejected"));
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const data = new FormData();
-    data.set("file", new File([mp4], "video.mp4", { type: "video/mp4" }));
+    const data = uploadForm(new File([mp4], "video.mp4", { type: "video/mp4" }));
     await expect(uploadHeroVideoAction(data)).resolves.toMatchObject({
       ok: false,
       message: expect.stringMatching(/upload rejected/i),
@@ -105,6 +119,14 @@ describe("hero video server upload", () => {
     expect(JSON.stringify(secretResult)).not.toContain("super_secret");
     expect(JSON.stringify(log.mock.calls)).not.toContain("super_secret");
     log.mockRestore();
+  });
+
+  it("supprime le Blob si la création en base échoue", async () => {
+    mocks.create.mockRejectedValue(new Error("database unavailable"));
+    mocks.del.mockResolvedValue(undefined);
+    const data = uploadForm(new File([mp4], "video.mp4", { type: "video/mp4" }), 3);
+    await expect(uploadHeroVideoAction(data)).resolves.toMatchObject({ ok: false });
+    expect(mocks.del).toHaveBeenCalledWith("https://store.public.blob.vercel-storage.com/hero/video.mp4");
   });
 });
 
