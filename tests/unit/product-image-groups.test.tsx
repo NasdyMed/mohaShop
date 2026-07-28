@@ -122,12 +122,25 @@ describe("ProductImageGroups", () => {
     expect(noir).toHaveFocus();
   });
 
-  it("activates and marks the first color containing a server image error", () => {
-    render(<ProductImageGroups colors={["Noir", "Cognac"]} images={images} errors={{ "images.3.alt": ["Alt Cognac invalide."] }}
-      onUploadFiles={vi.fn()} onChangeAlt={vi.fn()} onMoveWithinColor={vi.fn()} onDelete={vi.fn()} />);
+  it("auto-activates each new error signature once without locking tab navigation", async () => {
+    const callbacks = {
+      onUploadFiles: vi.fn(), onChangeAlt: vi.fn(), onMoveWithinColor: vi.fn(), onDelete: vi.fn(),
+    };
+    const bothErrors = { "images.2.alt": ["Alt Noir invalide."], "images.3.alt": ["Alt Cognac invalide."] };
+    const { rerender } = render(<ProductImageGroups colors={["Noir", "Cognac"]} images={images} errors={bothErrors} {...callbacks} />);
+    const noir = screen.getByRole("tab", { name: /Noir.*erreur/i });
     const cognac = screen.getByRole("tab", { name: /Cognac.*erreur/i });
+    expect(noir).toHaveAttribute("aria-selected", "true");
+    await userEvent.click(cognac);
     expect(cognac).toHaveAttribute("aria-selected", "true");
-    expect(cognac).toHaveClass("is-error");
     expect(screen.getByText("Alt Cognac invalide.")).toBeVisible();
+
+    rerender(<ProductImageGroups colors={["Noir", "Cognac"]} images={images} errors={{ ...bothErrors }} {...callbacks} />);
+    expect(cognac).toHaveAttribute("aria-selected", "true");
+
+    rerender(<ProductImageGroups colors={["Noir", "Cognac"]} images={images}
+      errors={{ "images.2.url": ["URL Noir invalide."] }} {...callbacks} />);
+    expect(await screen.findByText("URL Noir invalide.")).toBeVisible();
+    expect(noir).toHaveAttribute("aria-selected", "true");
   });
 });

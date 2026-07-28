@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { KeyboardEvent, useRef, useState } from "react";
+import { KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import { colorSwatch } from "@/lib/catalog/color-swatches";
 import { EditableImage, groupImagesByColor, MAX_IMAGES_PER_COLOR } from "@/lib/catalog/product-image-groups";
@@ -30,13 +30,28 @@ export function ProductImageGroups(props: Props) {
   const [activeColor, setActiveColor] = useState(props.colors[0] ?? "");
   const input = useRef<HTMLInputElement>(null);
   const tabs = useRef<Array<HTMLButtonElement | null>>([]);
+  const handledErrorSignature = useRef("");
   const erroredIndexes = [...new Set(Object.keys(props.errors).flatMap((path) => {
     const match = /^images\.(\d+)\./.exec(path);
     return match ? [Number(match[1])] : [];
   }))].sort((a, b) => a - b);
   const errorColors = new Set(erroredIndexes.flatMap((index) => props.images[index]?.color ? [props.images[index].color] : []));
   const firstErrorColor = props.colors.find((color) => errorColors.has(color));
-  const selectedColor = firstErrorColor ?? (props.colors.includes(activeColor) ? activeColor : (props.colors[0] ?? ""));
+  const errorSignature = Object.entries(props.errors)
+    .filter(([path]) => /^images\.\d+\./.test(path))
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([path, messages]) => `${path}:${messages.join("\u0000")}`)
+    .join("\u0001");
+  useEffect(() => {
+    if (errorSignature === handledErrorSignature.current) return;
+    handledErrorSignature.current = errorSignature;
+    if (firstErrorColor) {
+      // A new server response should reveal its first invalid image once.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setActiveColor(firstErrorColor);
+    }
+  }, [errorSignature, firstErrorColor]);
+  const selectedColor = props.colors.includes(activeColor) ? activeColor : (props.colors[0] ?? "");
   const groups = groupImagesByColor(props.images, props.colors);
   const active = groups.find((group) => group.color === selectedColor) ?? groups[0];
   const count = active?.images.length ?? 0;
