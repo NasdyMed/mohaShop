@@ -64,4 +64,27 @@ describe("productInputSchema", () => {
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error.issues[0].path).toEqual(["images", 0, "color"]);
   });
+  it("accepts six images per color and rejects the seventh at its color path", () => {
+    const makeImages = (color: string, count: number, offset = 0) => Array.from({ length: count }, (_, index) => ({
+      ...valid.images[0], url: `https://images.unsplash.com/${color}-${index}.webp`, color, position: offset + index,
+    }));
+    expect(productInputSchema.safeParse({ ...valid, images: makeImages("Noir", 6) }).success).toBe(true);
+    const seventh = productInputSchema.safeParse({ ...valid, images: makeImages(" Noir ", 7) });
+    expect(seventh.success).toBe(false);
+    if (!seventh.success) expect(seventh.error.issues).toContainEqual(expect.objectContaining({
+      path: ["images", 6, "color"], message: "Maximum 6 images par couleur.",
+    }));
+    expect(productInputSchema.safeParse({
+      ...valid,
+      images: [...makeImages("Noir", 6), ...makeImages("Cognac", 6, 6)],
+      variants: [...valid.variants, { sku: "ATLAS-38-COGNAC", size: "38", color: "Cognac", stock: 4 }],
+    }).success).toBe(true);
+  });
+
+  it("bounds the total image input defensively", () => {
+    const images = Array.from({ length: 49 }, (_, position) => ({
+      ...valid.images[0], url: `https://images.unsplash.com/${position}.webp`, position,
+    }));
+    expect(productInputSchema.safeParse({ ...valid, images }).success).toBe(false);
+  });
 });

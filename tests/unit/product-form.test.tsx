@@ -88,15 +88,13 @@ describe("ProductForm", () => {
       .mockResolvedValueOnce({ ok: true, url: "https://shop.public.blob.vercel-storage.com/noir.webp" })
       .mockResolvedValueOnce({ ok: true, url: "https://shop.public.blob.vercel-storage.com/cognac.webp" });
     render(<ProductForm initialValue={{ ...validDraft, images: [] }} />);
-    await user.upload(screen.getByLabelText(/téléverser des images/i), [
+    await user.upload(screen.getByLabelText(/téléverser des images pour Noir/i), [
       new File(["black"], "noir.webp", { type: "image/webp" }),
       new File(["brown"], "cognac.webp", { type: "image/webp" }),
     ]);
     expect(await screen.findByRole("link", { name: "Ouvrir l’image 1" })).toBeVisible();
     expect(mocks.upload).toHaveBeenCalledTimes(2);
-    const images = screen.getByRole("region", { name: "Images du produit" });
-    expect(within(images).getAllByRole("radio", { name: "Noir" })).toHaveLength(2);
-    expect(within(images).getAllByRole("radio", { name: "Noir" }).every((radio) => radio.hasAttribute("checked"))).toBe(true);
+    expect(screen.getByText("2 images sur 6")).toBeVisible();
   });
 
   it("conserve les uploads réussis quand un fichier suivant échoue", async () => {
@@ -105,7 +103,7 @@ describe("ProductForm", () => {
       .mockResolvedValueOnce({ ok: true, url: "https://example.com/kept.webp" })
       .mockRejectedValueOnce(new Error("network"));
     render(<ProductForm initialValue={{ ...validDraft, images: [] }} />);
-    await user.upload(screen.getByLabelText(/téléverser des images/i), [
+    await user.upload(screen.getByLabelText(/téléverser des images pour Noir/i), [
       new File(["kept"], "kept.webp", { type: "image/webp" }),
       new File(["failed"], "failed.webp", { type: "image/webp" }),
     ]);
@@ -120,20 +118,11 @@ describe("ProductForm", () => {
     mocks.upload.mockReturnValue(new Promise((done) => { resolve = done; }));
     const user = userEvent.setup();
     render(<ProductForm initialValue={validDraft} />);
-    await user.upload(screen.getByLabelText(/téléverser des images/i), new File(["x"], "new.webp", { type: "image/webp" }));
+    await user.upload(screen.getByLabelText(/téléverser des images pour Noir/i), new File(["x"], "new.webp", { type: "image/webp" }));
     expect(screen.getByRole("group", { name: "Déclinaisons" })).toHaveAttribute("aria-busy", "true");
     expect(screen.getByRole("checkbox", { name: "Noir" })).toBeDisabled();
     resolve({ ok: true, url: "https://example.com/new.webp" });
     await waitFor(() => expect(screen.getByRole("checkbox", { name: "Noir" })).toBeEnabled());
-  });
-
-  it("n'ajoute pas une image résolue sans couleur active et affiche une erreur", async () => {
-    mocks.upload.mockResolvedValue({ ok: true, url: "https://example.com/orphan.webp" });
-    const user = userEvent.setup();
-    render(<ProductForm />);
-    await user.upload(screen.getByLabelText(/téléverser des images/i), new File(["x"], "orphan.webp", { type: "image/webp" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(/aucune couleur active/i);
-    expect(screen.queryByRole("region", { name: "Images du produit" })).not.toBeInTheDocument();
   });
 
   it("réassocie une image à la première couleur encore active si la couleur capturée disparaît", async () => {
@@ -148,14 +137,14 @@ describe("ProductForm", () => {
         { sku: "COGNAC-38", size: "38", color: "Cognac", stock: 0 },
       ],
     }} />);
-    await user.upload(screen.getByLabelText(/téléverser des images/i), new File(["x"], "new.webp", { type: "image/webp" }));
+    await user.upload(screen.getByLabelText(/téléverser des images pour Noir/i), new File(["x"], "new.webp", { type: "image/webp" }));
     const capturedColor = screen.getByRole("checkbox", { name: "Noir" });
     screen.getByRole("group", { name: "Déclinaisons" }).removeAttribute("disabled");
     await user.click(capturedColor);
     expect(capturedColor).not.toBeChecked();
     resolve({ ok: true, url: "https://example.com/new.webp" });
-    const images = await screen.findByRole("region", { name: "Images du produit" });
-    expect(within(images).getByRole("radio", { name: "Cognac" })).toBeChecked();
+    await screen.findByRole("region", { name: "Images du produit" });
+    expect(screen.getByRole("tab", { name: /Cognac/ })).toHaveAttribute("aria-selected", "true");
   });
 
   it("affiche l'erreur serveur de couleur d'une image", async () => {
@@ -174,6 +163,17 @@ describe("ProductForm failures and accessibility",()=>{
 });
 
 describe("VariantEditor through ProductForm", () => {
+  it("repasse en brouillon quand le retrait d’une couleur supprime la dernière image", async () => {
+    const user = userEvent.setup();
+    render(<ProductForm initialValue={{ ...validDraft, isVisible: true, variants: [
+      validDraft.variants[0],
+      { sku: "COGNAC-38", size: "38", color: "Cognac", stock: 2 },
+    ] }} />);
+    await user.click(screen.getByRole("checkbox", { name: "Noir" }));
+    await user.click(screen.getByRole("button", { name: "Confirmer le retrait" }));
+    expect(screen.getByRole("checkbox", { name: "Produit visible" })).not.toBeChecked();
+  });
+
   it("ajoute, modifie et retire une déclinaison", async () => {
     const user = userEvent.setup();
     render(<ProductForm />);
@@ -193,7 +193,7 @@ describe("VariantEditor through ProductForm", () => {
     render(<ProductForm initialValue={validDraft} />);
     await user.click(screen.getByRole("checkbox", { name: "Pointure 38" }));
     await user.click(screen.getByRole("button", { name: "Confirmer le retrait" }));
-    expect(screen.getByRole("region", { name: "Images du produit" })).toBeVisible();
+    expect(screen.getByText(/aucune couleur active/i)).toBeVisible();
     await user.click(screen.getByRole("checkbox", { name: "Pointure 38" }));
     await user.click(screen.getByRole("checkbox", { name: "Noir" }));
     expect(screen.getByRole("dialog")).toHaveTextContent(/images.*Noir.*retirées du produit/i);

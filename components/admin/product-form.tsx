@@ -1,27 +1,20 @@
 "use client";
 
-import Image from "next/image";
-import { ChangeEvent, FormEvent, useRef, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { saveProductAction } from "@/app/actions/save-product";
 import { uploadProductImageAction } from "@/app/actions/upload-product-image";
 import { LoadingLabel } from "@/components/ui/loading-label";
-import { colorSwatch, normalizeProductColor, productColorOptions } from "@/lib/catalog/color-swatches";
+import { normalizeProductColor } from "@/lib/catalog/color-swatches";
+import { EditableImage, MAX_IMAGES_PER_COLOR, moveImageWithinColor, normalizeImagePositions, orderImagesByColor } from "@/lib/catalog/product-image-groups";
+import { ProductImageGroups } from "./product-image-groups";
 import { EditableVariant, VariantEditor } from "./variant-editor";
 
-type EditableImage = { id?: string; url: string; alt: string; color?: string | null; position: number };
 type Value = { id?: string; name: string; nameAr: string; description: string; descriptionAr: string; priceDh: number; slug: string; isVisible: boolean; images: EditableImage[]; variants: EditableVariant[] };
 type Errors = Record<string, string[]>;
 const empty: Value = { name: "", nameAr: "", description: "", descriptionAr: "", priceDh: 1, slug: "", isVisible: false, images: [], variants: [] };
 const FieldError = ({ errors, id }: { errors?: string[]; id?: string }) => errors?.map((error, index) => <p className="field-error" id={index === 0 ? id : undefined} key={error}>{error}</p>);
-
-function ArrowIcon({ direction }: { direction: "up" | "down" }) {
-  return <svg aria-hidden="true" viewBox="0 0 24 24"><path d={direction === "up" ? "m6 15 6-6 6 6" : "m6 9 6 6 6-6"}/></svg>;
-}
-function TrashIcon() {
-  return <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5"/></svg>;
-}
 
 export function ProductForm({ initialValue }: { initialValue?: Value }) {
   const router = useRouter();
@@ -29,12 +22,11 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
     const initial = initialValue ?? empty;
     const variants = initial.variants.map((variant) => ({ ...variant, color: normalizeProductColor(variant.color) }));
     const firstColor = variants[0]?.color ?? null;
-    return { ...initial, images: initial.images.map((image) => ({ ...image, color: image.color ?? firstColor })), variants };
+    return { ...initial, images: initial.images.map((image) => ({ ...image, color: image.color || firstColor || "" })), variants };
   });
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
-  const fileInput = useRef<HTMLInputElement>(null);
   const operationLock = useRef(false);
   const [message, setMessage] = useState("");
   const [errors, setErrors] = useState<Errors>({});
@@ -42,22 +34,13 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
   const canPublish = value.images.length > 0 && activeVariants.length > 0;
   const colors = [...new Set(activeVariants.map((variant) => variant.color))];
 
-  const move = (index: number, delta: number) => {
-    const target = index + delta;
-    if (target < 0 || target >= value.images.length) return;
-    const images = [...value.images];
-    [images[index], images[target]] = [images[target], images[index]];
-    setValue({ ...value, images: images.map((image, position) => ({ ...image, position })) });
-  };
-
-  async function uploadImages(event: ChangeEvent<HTMLInputElement>) {
-    const files = [...(event.target.files ?? [])].slice(0, Math.max(0, 10 - value.images.length));
-    event.target.value = "";
+  async function uploadImages(color: string, requestedFiles: File[]) {
+    const files = requestedFiles.slice(0, Math.max(0, MAX_IMAGES_PER_COLOR - value.images.filter((image) => image.color === color).length));
     if (!files.length || uploading) return;
     setUploading(true);
     setUploadError("");
     setMessage("");
-    const preferredColor = colors[0] ?? null;
+    const preferredColor = color;
     const added: EditableImage[] = [];
     try {
       for (const file of files) {
@@ -80,8 +63,7 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
         }
         return {
           ...current,
-          images: [...current.images, ...added.map((image) => ({ ...image, color }))]
-            .map((image, position) => ({ ...image, position })),
+          images: orderImagesByColor([...current.images, ...added.map((image) => ({ ...image, color }))], activeColors),
         };
       });
     } catch {
@@ -148,43 +130,22 @@ export function ProductForm({ initialValue }: { initialValue?: Value }) {
       const hasActiveVariants = variants.some((variant) => !variant.removed);
       setValue({ ...value, variants, isVisible: value.isVisible && hasActiveVariants && value.images.length > 0 });
     }} disabled={busy || uploading} errors={errors} protectedColors={new Set(value.images.flatMap((image) => image.color ? [image.color] : []))}
-      onConfirmedColorRemoval={(color) => setValue((current) => ({
-        ...current,
-        images: current.images.filter((image) => image.color !== color).map((image, position) => ({ ...image, position })),
-      }))}/>
+      onConfirmedColorRemoval={(color) => setValue((current) => {
+        const images = normalizeImagePositions(current.images.filter((image) => image.color !== color));
+        return { ...current, images, isVisible: current.isVisible && images.length > 0 };
+      })}/>
 
     <section className="admin-form-card" aria-labelledby="product-images-title">
       <div className="admin-section-heading"><div><span className="admin-section-index">03</span><h2 id="product-images-title">Images</h2></div><p>La première image devient la couverture du produit.</p></div>
       <FieldError errors={errors.images}/>
-      <div className="admin-upload-state">
-        <input ref={fileInput} className="visually-hidden" aria-label="Téléverser des images" type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={busy || uploading || value.images.length >= 10} onChange={uploadImages}/>
-        <button className="admin-outline-button" type="button" disabled={busy || uploading || value.images.length >= 10} onClick={() => fileInput.current?.click()}>{uploading ? <LoadingLabel>Import en cours…</LoadingLabel> : <><span aria-hidden="true">＋</span> Ajouter des images</>}</button>
-        <p><strong>JPEG, PNG ou WebP · 5 Mio maximum.</strong> Jusqu’à 10 visuels associés aux couleurs du produit.</p>
-      </div>
-      {value.images.length === 0 ? <div className="admin-image-empty"><span aria-hidden="true">◇</span><strong>Aucune image</strong><p>Importez un premier visuel pour préparer la fiche produit.</p></div> :
-        <div className="admin-image-gallery" role="region" aria-label="Images du produit">
-          {value.images.map((image, index) => <article className="admin-image-card" key={image.id ?? image.url}>
-            <a className="admin-image-preview" href={image.url} target="_blank" rel="noreferrer" aria-label={`Ouvrir l’image ${index + 1}`}>
-              <Image src={image.url} alt={image.alt} width={420} height={320}/>{index === 0 && <span>Couverture</span>}
-            </a>
-            <div className="admin-image-card-body">
-              <label>Texte alternatif<input disabled={busy || uploading} required minLength={2} maxLength={160} aria-invalid={!!errors[`images.${index}.alt`]} aria-describedby={errors[`images.${index}.alt`] ? `product-image-${index}-alt-error` : undefined} value={image.alt} onChange={(event) => setValue({ ...value, images: value.images.map((item, current) => current === index ? { ...item, alt: event.target.value } : item) })}/></label>
-              <fieldset className="admin-image-color-picker"><legend>Visuel pour <strong>{image.color ?? "Aucune couleur"}</strong></legend><div className="admin-image-color-options">
-                {productColorOptions.map((color) => {
-                  const available = colors.includes(color);
-                  return <label className={`admin-color-option${available ? "" : " is-disabled"}`} title={available ? color : `${color} — ajoutez cette déclinaison`} key={color}><input type="radio" name={`image-color-${index}`} aria-label={color} checked={image.color === color} disabled={busy || uploading || !available} onChange={() => setValue({ ...value, images: value.images.map((item, current) => current === index ? { ...item, color } : item) })}/><span style={{ backgroundColor: colorSwatch(color).background }} aria-hidden="true"/></label>;
-                })}
-              </div></fieldset>
-              {colors.length === 0 && <p className="admin-inline-note">Ajoutez d’abord une déclinaison pour associer les images.</p>}
-              <FieldError id={`product-image-${index}-alt-error`} errors={errors[`images.${index}.alt`]}/><FieldError errors={errors[`images.${index}.url`]}/><FieldError errors={errors[`images.${index}.color`]}/><FieldError errors={errors[`images.${index}.position`]}/><FieldError errors={errors[`images.${index}.id`]}/>
-              <div className="admin-image-actions">
-                <button className="admin-icon-button" aria-label={`Déplacer l’image ${index + 1} vers le haut`} title="Monter" disabled={busy || uploading || index === 0} type="button" onClick={() => move(index, -1)}><ArrowIcon direction="up"/></button>
-                <button className="admin-icon-button" aria-label={`Déplacer l’image ${index + 1} vers le bas`} title="Descendre" disabled={busy || uploading || index === value.images.length - 1} type="button" onClick={() => move(index, 1)}><ArrowIcon direction="down"/></button>
-                <button className="admin-icon-button is-danger" aria-label={`Supprimer l’image ${index + 1}`} title="Supprimer" disabled={busy || uploading} type="button" onClick={() => setValue({ ...value, isVisible: false, images: value.images.filter((_, current) => current !== index).map((item, position) => ({ ...item, position })) })}><TrashIcon/></button>
-              </div>
-            </div>
-          </article>)}
-        </div>}
+      <ProductImageGroups colors={colors} images={value.images} disabled={busy} uploading={uploading} errors={errors}
+        onUploadFiles={uploadImages}
+        onChangeAlt={(selected, alt) => setValue((current) => ({ ...current, images: current.images.map((image) => image === selected ? { ...image, alt } : image) }))}
+        onMoveWithinColor={(color, index, delta) => setValue((current) => ({ ...current, images: moveImageWithinColor(current.images, colors, color, index, delta) }))}
+        onDelete={(selected) => setValue((current) => {
+          const images = normalizeImagePositions(current.images.filter((image) => image !== selected));
+          return { ...current, images, isVisible: current.isVisible && images.length > 0 };
+        })}/>
     </section>
     <div className="admin-form-actions"><p>{value.isVisible ? "Les modifications seront visibles immédiatement." : "Ce produit sera enregistré en brouillon."}</p><button className="admin-submit" disabled={busy || uploading}>{busy ? <LoadingLabel>Enregistrement…</LoadingLabel> : "Enregistrer le produit"}</button></div>
   </form>;

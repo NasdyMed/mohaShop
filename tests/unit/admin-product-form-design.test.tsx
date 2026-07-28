@@ -37,24 +37,17 @@ describe("Impeccable admin product form", () => {
     expect(indices).toEqual(["01", "02", "03"]);
   });
 
-  it("affiche toute la palette sur une image et désactive les couleurs sans déclinaison", () => {
+  it("regroupe les images dans des onglets limités aux couleurs sélectionnées", () => {
     render(<ProductForm initialValue={product} />);
-    const firstCard = within(screen.getByRole("region", { name: "Images du produit" })).getAllByRole("article")[0];
-    const picker = within(firstCard).getByRole("group", { name: /visuel pour/i });
-
-    expect(within(picker).queryByRole("radio", { name: "Toutes les couleurs" })).not.toBeInTheDocument();
-    expect(within(picker).getAllByRole("radio")).toHaveLength(8);
-    expect(within(picker).getByRole("radio", { name: "Noir" })).toBeChecked();
-    expect(within(picker).getByRole("radio", { name: "Noir" })).toBeEnabled();
-    expect(within(picker).getByRole("radio", { name: "Cognac" })).toBeDisabled();
+    expect(screen.getByRole("tab", { name: /Noir/ })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("tab", { name: /Cognac/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
   });
 
   it("présente l’upload comme indisponible tant que Vercel Blob n’est pas configuré", () => {
     render(<ProductForm />);
 
-    expect(screen.getByText(/ajouter des images/i)).toBeVisible();
-    expect(screen.getByLabelText(/téléverser des images/i)).toHaveAttribute("multiple");
-    expect(screen.getByText(/jpeg, png ou webp/i)).toBeVisible();
+    expect(screen.getByText(/aucune couleur active/i)).toBeVisible();
   });
 
   it("affiche les images dans de vraies cartes avec aperçu et actions iconiques accessibles", () => {

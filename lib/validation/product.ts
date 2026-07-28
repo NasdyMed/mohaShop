@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { MAX_IMAGES_PER_COLOR } from "@/lib/catalog/product-image-groups";
+import { productColorOptions } from "@/lib/catalog/color-swatches";
 
 const noControls = (value: string) => !/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(value);
 const clean = (min: number, max: number, label: string) => z.string()
@@ -19,7 +21,7 @@ const imageSchema = z.object({
   }, "L’image doit utiliser un hébergeur autorisé en HTTPS."),
   alt: clean(2, 160, "Le texte alternatif"),
   color: clean(1, 60, "La couleur"),
-  position: z.number().int().min(0).max(9),
+  position: z.number().int().min(0).max(productColorOptions.length * MAX_IMAGES_PER_COLOR - 1),
 }).strict();
 
 const variantSchema = z.object({
@@ -40,13 +42,14 @@ export const productInputSchema = z.object({
   priceDh: z.number().safe().int().min(1).max(1_000_000),
   slug: z.string().trim().max(120).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug invalide."),
   isVisible: z.boolean(),
-  images: z.array(imageSchema).max(10),
+  images: z.array(imageSchema).max(productColorOptions.length * MAX_IMAGES_PER_COLOR),
   variants: z.array(variantSchema).max(100),
 }).strict().superRefine((value, context) => {
   if (value.isVisible && value.images.length === 0) context.addIssue({ code: "custom", path: ["images"], message: "Ajoutez au moins une image avant de publier." });
   if (value.isVisible && value.variants.length === 0) context.addIssue({ code: "custom", path: ["variants"], message: "Ajoutez au moins une déclinaison avant de publier." });
   const positions = new Set<number>();
   const imageIds = new Set<string>();
+  const imagesPerColor = new Map<string, number>();
   value.images.forEach((image, index) => {
     if (image.id) {
       if (imageIds.has(image.id)) context.addIssue({ code: "custom", path: ["images", index, "id"], message: "Cette image est dupliquée." });
@@ -54,7 +57,11 @@ export const productInputSchema = z.object({
     }
     if (positions.has(image.position)) context.addIssue({ code: "custom", path: ["images", index, "position"], message: "Les positions des images doivent être uniques." });
     positions.add(image.position);
-    if (image.color && !value.variants.some((variant) => variant.color.toLocaleLowerCase("fr") === image.color!.toLocaleLowerCase("fr"))) {
+    const normalizedColor = image.color.trim().toLocaleLowerCase("fr");
+    const colorCount = (imagesPerColor.get(normalizedColor) ?? 0) + 1;
+    imagesPerColor.set(normalizedColor, colorCount);
+    if (colorCount > MAX_IMAGES_PER_COLOR) context.addIssue({ code: "custom", path: ["images", index, "color"], message: "Maximum 6 images par couleur." });
+    if (!value.variants.some((variant) => variant.color.trim().toLocaleLowerCase("fr") === normalizedColor)) {
       context.addIssue({ code: "custom", path: ["images", index, "color"], message: "Choisissez une couleur disponible pour ce produit." });
     }
   });
