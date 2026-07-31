@@ -34,10 +34,11 @@ describe("minimal checkout persistence", () => {
     mocks.transaction.order.create.mockResolvedValue({ id: "order-1" });
   });
 
-  it("persists only the four customer fields and assigns Morocco server-side", async () => {
+  it("persists the normalized customer phone and assigns Morocco server-side", async () => {
     await createOrder({
       firstName: "Amina",
       lastName: "El Idrissi",
+      phone: "06 12 34 56 78",
       city: "Rabat",
       address: "12 avenue Mohammed V",
       items: [{ variantId: "variant-1", quantity: 1 }],
@@ -49,7 +50,7 @@ describe("minimal checkout persistence", () => {
         customerLastName: "El Idrissi",
         customerCity: "Rabat",
         customerAddress: "12 avenue Mohammed V",
-        customerPhone: null,
+        customerPhone: "+212612345678",
         customerRegion: null,
         customerCountry: "Maroc",
       }),

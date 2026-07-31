@@ -13,12 +13,12 @@ import { localizePath } from "@/lib/i18n/config";
 import { useStorefrontI18n } from "@/components/shop/locale-provider";
 
 type CustomerFields = {
-  firstName: string; lastName: string; address: string; city: string;
+  firstName: string; lastName: string; phone: string; address: string; city: string;
 };
 type FieldName = keyof CustomerFields;
 
 const initialFields: CustomerFields = {
-  firstName: "", lastName: "", address: "", city: "",
+  firstName: "", lastName: "", phone: "", address: "", city: "",
 };
 
 const failureMessages = {
@@ -40,13 +40,13 @@ export function CheckoutForm() {
   const ar = locale === "ar";
   const labels = ar ? {
     heading: "معلومات التوصيل", eyebrow: "إتمام طلبك", intro: "سنستخدم هذه المعلومات فقط لتحضير طلبك وتوصيله.",
-    contact: "معلومات التوصيل", firstName: "الاسم الأول", lastName: "النسب",
+    contact: "معلومات التوصيل", firstName: "الاسم الأول", lastName: "النسب", phone: "رقم الهاتف",
     address: "عنوان التوصيل", city: "المدينة",
     pending: "جارٍ تسجيل الطلب…", submit: dictionary.checkout.submit, invalid: "يرجى تصحيح الحقول المشار إليها.",
     empty: dictionary.cart.empty, viewCollection: "عرض المجموعة", backCart: "العودة إلى السلة",
   } : {
     heading: "Livraison", eyebrow: "Finaliser votre achat", intro: "Nous les utiliserons uniquement pour préparer et livrer cette commande.",
-    contact: "Informations de livraison", firstName: "Prénom", lastName: "Nom",
+    contact: "Informations de livraison", firstName: "Prénom", lastName: "Nom", phone: "Téléphone",
     address: "Adresse de livraison", city: "Ville",
     pending: "Commande en cours…", submit: "Confirmer ma commande", invalid: "Veuillez corriger les champs indiqués.",
     empty: "Votre panier est vide.", viewCollection: "Voir la collection", backCart: "Retour au panier",
@@ -84,7 +84,7 @@ export function CheckoutForm() {
     if (!parsed.success) {
       const flattened = parsed.error.flatten().fieldErrors;
       setFieldErrors({
-        firstName: flattened.firstName?.[0], lastName: flattened.lastName?.[0],
+        firstName: flattened.firstName?.[0], lastName: flattened.lastName?.[0], phone: flattened.phone?.[0],
         address: flattened.address?.[0], city: flattened.city?.[0],
       });
       setFormError(labels.invalid);
@@ -98,7 +98,7 @@ export function CheckoutForm() {
       if (!result.ok) {
         if (result.code === "INVALID" && result.fieldErrors) {
           setFieldErrors({
-            firstName: result.fieldErrors.firstName?.[0], lastName: result.fieldErrors.lastName?.[0],
+            firstName: result.fieldErrors.firstName?.[0], lastName: result.fieldErrors.lastName?.[0], phone: result.fieldErrors.phone?.[0],
             address: result.fieldErrors.address?.[0], city: result.fieldErrors.city?.[0],
           });
         }
@@ -135,6 +135,7 @@ export function CheckoutForm() {
         <fieldset className="checkout-fieldset"><legend>{labels.contact}</legend><div className="checkout-fields">
           <CheckoutField label={labels.firstName} name="firstName" autoComplete="given-name" value={fields.firstName} error={displayFieldError(fieldErrors.firstName)} onChange={field} />
           <CheckoutField label={labels.lastName} name="lastName" autoComplete="family-name" value={fields.lastName} error={displayFieldError(fieldErrors.lastName)} onChange={field} />
+          <CheckoutField label={labels.phone} name="phone" autoComplete="tel" inputType="tel" value={fields.phone} error={displayFieldError(fieldErrors.phone)} onChange={field} />
           <CheckoutField label={labels.address} name="address" autoComplete="street-address" value={fields.address} error={displayFieldError(fieldErrors.address)} onChange={field} multiline />
           <CheckoutField label={labels.city} name="city" autoComplete="address-level2" value={fields.city} error={displayFieldError(fieldErrors.city)} onChange={field} />
         </div></fieldset>
@@ -151,12 +152,13 @@ export function CheckoutForm() {
   </div>;
 }
 
-function CheckoutField({ label, name, autoComplete, value, error, onChange, multiline = false }: {
+function CheckoutField({ label, name, autoComplete, value, error, onChange, multiline = false, inputType = "text" }: {
   label: string; name: FieldName; autoComplete: string; value: string; error?: string;
   onChange: (name: FieldName, value: string) => void;
   multiline?: boolean;
+  inputType?: React.HTMLInputTypeAttribute;
 }) {
   const errorId = `${name}-error`;
   const common = { id: name, name, autoComplete, value, required: true, "aria-invalid": Boolean(error), "aria-describedby": error ? errorId : undefined, onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(name, event.currentTarget.value) };
-  return <div className={`form-field${multiline ? " form-field-wide" : ""}`}><label htmlFor={name}>{label}</label>{multiline ? <textarea {...common} rows={4} /> : <input {...common} type="text" />}{error && <p className="field-error" id={errorId}>{error}</p>}</div>;
+  return <div className={`form-field${multiline ? " form-field-wide" : ""}`}><label htmlFor={name}>{label}</label>{multiline ? <textarea {...common} rows={4} /> : <input {...common} type={inputType} />}{error && <p className="field-error" id={errorId}>{error}</p>}</div>;
 }

@@ -36,6 +36,7 @@ async function fillValidForm() {
   const user = userEvent.setup();
   await user.type(screen.getByLabelText("Prénom"), "Amine");
   await user.type(screen.getByLabelText("Nom"), "El Idrissi");
+  await user.type(screen.getByLabelText("Téléphone"), "0612345678");
   await user.type(screen.getByLabelText("Adresse de livraison"), "12 rue des Fleurs, Rabat");
   await user.type(screen.getByLabelText("Ville"), "Rabat");
   return user;
@@ -49,7 +50,7 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe("CheckoutForm", () => {
-  it("affiche exactement prénom, nom, ville et adresse", async () => {
+  it("affiche prénom, nom, téléphone, ville et adresse", async () => {
     renderCheckout();
     const form = (await screen.findByRole("button", { name: "Confirmer ma commande" })).closest("form")!;
     const fields = within(form).getAllByRole("textbox");
@@ -57,6 +58,7 @@ describe("CheckoutForm", () => {
     expect(fields.map((field) => field.getAttribute("name"))).toEqual([
       "firstName",
       "lastName",
+      "phone",
       "address",
       "city",
     ]);
@@ -107,6 +109,7 @@ describe("CheckoutForm", () => {
     await waitFor(() => expect(createOrderAction).toHaveBeenCalledWith({
       firstName: "Amine",
       lastName: "El Idrissi",
+      phone: "0612345678",
       address: "12 rue des Fleurs, Rabat",
       city: "Rabat",
       items: [{ variantId: "variant-atlas-40", quantity: 2 }],

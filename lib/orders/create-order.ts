@@ -141,7 +141,7 @@ export async function createOrder(rawInput: unknown): Promise<CreateOrderResult>
             number,
             customerFirstName: checkout.firstName,
             customerLastName: checkout.lastName,
-            customerPhone: null,
+            customerPhone: checkout.phone,
             customerEmail: null,
             customerAddress: checkout.address,
             customerAddressComplement: null,

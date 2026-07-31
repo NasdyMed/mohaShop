@@ -9,6 +9,7 @@ import {
 const validCheckout = {
   firstName: "Amina",
   lastName: "El Mansouri",
+  phone: "0612345678",
   address: "12 rue Atlas, Rabat",
   city: "Rabat",
   items: [{ variantId: "variant-1", quantity: 2 }],
@@ -59,10 +60,11 @@ describe("Moroccan phone validation", () => {
 });
 
 describe("checkoutSchema", () => {
-  it("accepts exactly the four requested customer fields", () => {
+  it("requires and normalizes the customer phone", () => {
     const result = checkoutSchema.parse({
       firstName: "Amina",
       lastName: "El Idrissi",
+      phone: "06 12 34 56 78",
       city: "Rabat",
       address: "12 avenue Mohammed V",
       items: [{ variantId: "variant-1", quantity: 1 }],
@@ -71,18 +73,18 @@ describe("checkoutSchema", () => {
     expect(result).toMatchObject({
       firstName: "Amina",
       lastName: "El Idrissi",
+      phone: "+212612345678",
       city: "Rabat",
       address: "12 avenue Mohammed V",
     });
   });
 
-  it("rejects removed delivery fields", () => {
+  it("rejects a missing phone", () => {
     const result = checkoutSchema.safeParse({
       firstName: "Amina",
       lastName: "El Idrissi",
       city: "Rabat",
       address: "12 avenue Mohammed V",
-      phone: "0612345678",
       items: [{ variantId: "variant-1", quantity: 1 }],
     });
 
@@ -101,6 +103,7 @@ describe("checkoutSchema", () => {
       ...validCheckout,
       firstName: "Amina Zahra",
       lastName: "El-Mansouri",
+      phone: "+212612345678",
       address: "12 rue Atlas, Rabat",
     });
   });

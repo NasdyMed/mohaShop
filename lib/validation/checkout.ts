@@ -61,6 +61,10 @@ export const checkoutSchema = z
   .strictObject({
     firstName: normalizedText(2, 80, "Le prénom"),
     lastName: normalizedText(2, 80, "Le nom"),
+    phone: z
+      .string({ error: "Le téléphone est requis." })
+      .refine(validMoroccanPhone, "Saisissez un numéro mobile marocain valide.")
+      .transform(normalizeMoroccanPhone),
     address: normalizedText(10, 300, "L’adresse"),
     city: normalizedText(2, 100, "La ville"),
     locale: z.enum(["fr", "ar"]).optional(),
