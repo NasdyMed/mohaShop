@@ -38,5 +38,9 @@ describe("storefront i18n", () => {
     expect(ar.colors.Noir).toBe("أسود");
     expect(ar.stock.outOfStock).toBe("نفد المخزون");
     expect(fr.checkout.submit).toBe("Confirmer la commande");
+    expect(fr.product.orderNow).toBe("Commander maintenant");
+    expect(fr.product.redirecting).toBe("Redirection…");
+    expect(ar.product.orderNow).toBe("اطلب الآن");
+    expect(ar.product.redirecting).toBe("جارٍ الانتقال…");
   });
 });
