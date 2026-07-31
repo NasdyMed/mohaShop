@@ -32,7 +32,7 @@ describe("ProductDetailExperience", () => {
     const { container } = render(<CartProvider><ProductDetailExperience product={product} /></CartProvider>);
 
     expect(screen.getByRole("heading", { name: "Bottine Atlas" })).toBeInTheDocument();
-    expect(container.querySelector(".product-info")).toHaveAccessibleName("Commander maintenant Bottine Atlas");
+    expect(screen.getByRole("region", { name: "Commander maintenant Bottine Atlas" })).toBeInTheDocument();
     expect(screen.getByText("Botte")).toBeInTheDocument();
     expect(screen.getByText("EU 40")).toBeInTheDocument();
     expect(screen.getByText("EU 41")).toBeInTheDocument();

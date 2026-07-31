@@ -4,9 +4,6 @@ import { describe, expect, it } from "vitest";
 
 const read = (path: string) => readFileSync(join(process.cwd(), path), "utf8");
 
-const declarationsFor = (css: string, selector: string) => Array.from(css.matchAll(/([^{}]+)\{([^{}]*)\}/g))
-  .find(([, selectors]) => selectors.split(",").some((candidate) => candidate.trim() === selector))?.[2];
-
 describe("storefront touch targets", () => {
   it("marks compact navigation links as touch actions", () => {
     expect(read("components/shop/storefront-shell.tsx")).toContain('className="touch-link"');
@@ -19,9 +16,21 @@ describe("storefront touch targets", () => {
   });
 
   it("gives the add-to-cart button a 52 pixel minimum height", () => {
-    const declarations = declarationsFor(read("app/globals.css"), ".add-to-cart button");
-    expect(declarations).toBeDefined();
-    expect(declarations).toMatch(/(?:^|;)\s*min-height:\s*52px\s*;/);
+    const style = document.createElement("style");
+    const wrapper = document.createElement("div");
+    const button = document.createElement("button");
+    style.textContent = read("app/globals.css");
+    wrapper.className = "add-to-cart";
+    wrapper.append(button);
+    document.head.append(style);
+    document.body.append(wrapper);
+
+    try {
+      expect(getComputedStyle(button).minHeight).toBe("52px");
+    } finally {
+      wrapper.remove();
+      style.remove();
+    }
   });
 
   it("adapte le titre de connexion à la largeur réelle de sa carte", () => {
