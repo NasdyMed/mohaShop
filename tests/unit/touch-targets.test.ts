@@ -4,16 +4,24 @@ import { describe, expect, it } from "vitest";
 
 const read = (path: string) => readFileSync(join(process.cwd(), path), "utf8");
 
+const declarationsFor = (css: string, selector: string) => Array.from(css.matchAll(/([^{}]+)\{([^{}]*)\}/g))
+  .find(([, selectors]) => selectors.split(",").some((candidate) => candidate.trim() === selector))?.[2];
+
 describe("storefront touch targets", () => {
-  it("marks compact navigation and confirmation links as touch actions", () => {
+  it("marks compact navigation links as touch actions", () => {
     expect(read("components/shop/storefront-shell.tsx")).toContain('className="touch-link"');
     expect(read("components/cart/cart-link.tsx")).toContain('className="touch-link"');
-    expect(read("components/cart/add-to-cart.tsx")).toContain('className="touch-link"');
   });
 
   it("gives touch actions a 44 by 44 CSS target", () => {
     const css = read("app/globals.css");
     expect(css).toMatch(/\.touch-link\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/s);
+  });
+
+  it("gives the add-to-cart button a 52 pixel minimum height", () => {
+    const declarations = declarationsFor(read("app/globals.css"), ".add-to-cart button");
+    expect(declarations).toBeDefined();
+    expect(declarations).toMatch(/(?:^|;)\s*min-height:\s*52px\s*;/);
   });
 
   it("adapte le titre de connexion à la largeur réelle de sa carte", () => {

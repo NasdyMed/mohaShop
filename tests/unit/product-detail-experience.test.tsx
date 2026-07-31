@@ -5,6 +5,7 @@ import { CartProvider } from "@/components/cart/cart-provider";
 import { ProductDetailExperience } from "@/components/shop/product-detail-experience";
 
 vi.mock("next/image", () => ({ default: ({ alt, src }: { alt: string; src: string }) => <span role="img" aria-label={alt} data-src={src} /> }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 afterEach(cleanup);
 
@@ -31,6 +32,7 @@ describe("ProductDetailExperience", () => {
     const { container } = render(<CartProvider><ProductDetailExperience product={product} /></CartProvider>);
 
     expect(screen.getByRole("heading", { name: "Bottine Atlas" })).toBeInTheDocument();
+    expect(container.querySelector(".product-info")).toHaveAccessibleName("Commander maintenant Bottine Atlas");
     expect(screen.getByText("Botte")).toBeInTheDocument();
     expect(screen.getByText("EU 40")).toBeInTheDocument();
     expect(screen.getByText("EU 41")).toBeInTheDocument();

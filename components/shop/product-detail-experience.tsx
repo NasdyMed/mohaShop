@@ -34,7 +34,7 @@ export function ProductDetailExperience({ product }: Props) {
     <div className="product-gallery-column">
       <ProductGallery images={product.images} productName={localizedProduct.name} selectedColor={selectedColor}/>
     </div>
-    <div className="product-info" aria-label={`${dictionary.product.addToCart} ${localizedProduct.name}`}>
+    <div className="product-info" aria-label={`${dictionary.product.orderNow} ${localizedProduct.name}`}>
       <h1>{localizedProduct.name}</h1>
       <p className="product-detail-category">{dictionary.product.category}</p>
       <div className="detail-price-row"><ProductPrice priceDh={product.priceDh} compareAtPriceDh={product.compareAtPriceDh} savingsLabel={dictionary.product.savings} variant="detail"/><span>{dictionary.product.vatIncluded}</span></div>
